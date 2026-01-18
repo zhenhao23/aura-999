@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WhateverClicks KitaHack
+
+A modern Next.js application built with the latest technologies for optimal performance and developer experience.
+
+## Tech Stack
+
+- **Framework**: [Next.js 16](https://nextjs.org) with App Router and Server Components
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com) with new @theme inline syntax
+- **UI Components**: [Shadcn UI](https://ui.shadcn.com) + [Radix UI](https://www.radix-ui.com)
+- **Font**: [Geist](https://vercel.com/font) optimized with `next/font`
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18.17 or later
+- npm, yarn, pnpm, or bun
+
+### Installation
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+### Development
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see your application.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The page auto-updates as you edit [src/app/page.tsx](src/app/page.tsx).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Build
+
+Build for production:
+
+```bash
+npm run build
+```
+
+Start the production server:
+
+```bash
+npm start
+```
+
+## Project Structure
+
+```
+whateverclicks-kitahack/
+├── src/
+│   ├── app/              # App router pages
+│   ├── components/       # React components
+│   │   └── ui/          # Shadcn UI components
+│   └── lib/             # Utility functions
+├── public/              # Static assets
+└── ...config files
+```
+
+## Adding UI Components
+
+This project uses Shadcn UI. To add new components:
+
+```bash
+npx shadcn@latest add [component-name]
+```
+
+For example:
+
+```bash
+npx shadcn@latest add dialog
+npx shadcn@latest add input
+npx shadcn@latest add form
+```
+
+Browse available components at [ui.shadcn.com](https://ui.shadcn.com)
 
 ## Learn More
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [Shadcn UI Documentation](https://ui.shadcn.com)
+- [Radix UI Documentation](https://www.radix-ui.com/primitives/docs/overview/introduction)
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Deploy with one click on [Vercel](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fyour-username%2Fwhateverclicks-kitahack)
+
+Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

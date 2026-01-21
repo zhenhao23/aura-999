@@ -97,6 +97,15 @@ export class WebRTCPeerConnection {
     return answer;
   }
 
+  // Set local description (for manual control)
+  async setLocalDescription(description: RTCSessionDescriptionInit) {
+    if (this.pc.signalingState === "closed") {
+      console.warn("Cannot set local description - connection is closed");
+      return;
+    }
+    await this.pc.setLocalDescription(description);
+  }
+
   // Set remote description
   async setRemoteDescription(description: RTCSessionDescriptionInit) {
     if (this.pc.signalingState === "closed") {

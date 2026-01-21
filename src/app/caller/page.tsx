@@ -29,6 +29,7 @@ export default function CallerPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<WebRTCPeerConnection | null>(null);
   const unsubscribersRef = useRef<Array<() => void>>([]);
+  const callIdRef = useRef<string | null>(null);
 
   // Start emergency call
   const startCall = async () => {
@@ -48,16 +49,29 @@ export default function CallerPage() {
         videoRef.current.srcObject = stream;
       }
 
-      // Create peer connection
+      // Create offer first to get callId before setting up peer connection
+      const tempPc = new WebRTCPeerConnection({});
+      tempPc.addStream(stream);
+      const offer = await tempPc.createOffer();
+
+      // Save offer to Firebase and get callId
+      const newCallId = await createCall(offer);
+      setCallId(newCallId);
+      callIdRef.current = newCallId;
+      setIsCallActive(true);
+
+      // Now create the real peer connection with callId available
       const pc = new WebRTCPeerConnection({
         onIceCandidate: (candidate) => {
-          if (callId) {
-            addCallerCandidate(callId, candidate.toJSON());
-          }
+          console.log("Caller ICE candidate:", candidate);
+          addCallerCandidate(newCallId, candidate.toJSON());
         },
         onConnectionStateChange: (state) => {
           setConnectionState(state);
           console.log("Caller connection state:", state);
+          if (state === "failed" || state === "disconnected") {
+            setError("Connection failed. Please try again.");
+          }
         },
       });
 
@@ -66,18 +80,17 @@ export default function CallerPage() {
       // Add local stream to peer connection
       pc.addStream(stream);
 
-      // Create offer
-      const offer = await pc.createOffer();
-
-      // Save offer to Firebase
-      const newCallId = await createCall(offer);
-      setCallId(newCallId);
-      setIsCallActive(true);
+      // Set local description with the same offer
+      await pc.setLocalDescription(offer);
 
       // Listen for answer from dispatcher
       const unsubAnswer = listenForAnswer(newCallId, async (answer) => {
         console.log("Received answer from dispatcher");
-        await pc.setRemoteDescription(answer);
+        try {
+          await pc.setRemoteDescription(answer);
+        } catch (err) {
+          console.error("Error setting remote description:", err);
+        }
       });
 
       // Listen for dispatcher ICE candidates
@@ -85,12 +98,19 @@ export default function CallerPage() {
         newCallId,
         async (candidate) => {
           console.log("Received dispatcher ICE candidate");
-          await pc.addIceCandidate(candidate);
+          try {
+            await pc.addIceCandidate(candidate);
+          } catch (err) {
+            console.error("Error adding ICE candidate:", err);
+          }
         },
       );
 
       // Store unsubscribers
       unsubscribersRef.current = [unsubAnswer, unsubCandidates];
+
+      // Close temporary peer connection
+      tempPc.close();
     } catch (err) {
       console.error("Error starting call:", err);
       setError(err instanceof Error ? err.message : "Failed to start call");

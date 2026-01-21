@@ -56,9 +56,12 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
         return;
       }
 
+      console.log("Answering call:", callId);
+
       // Create peer connection
       const pc = new WebRTCPeerConnection({
         onIceCandidate: (candidate) => {
+          console.log("Dispatcher ICE candidate:", candidate);
           addDispatcherCandidate(callId, candidate.toJSON());
         },
         onTrack: (event) => {
@@ -77,12 +80,15 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
       peerConnectionRef.current = pc;
 
       // Set remote description (offer from caller)
+      console.log("Setting remote description (offer)");
       await pc.setRemoteDescription(callData.offer);
 
       // Create answer
+      console.log("Creating answer");
       const answer = await pc.createAnswer();
 
       // Save answer to Firebase
+      console.log("Saving answer to Firebase");
       await setCallAnswer(callId, answer);
 
       // Listen for caller ICE candidates
@@ -90,7 +96,11 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
         callId,
         async (candidate) => {
           console.log("Received caller ICE candidate");
-          await pc.addIceCandidate(candidate);
+          try {
+            await pc.addIceCandidate(candidate);
+          } catch (err) {
+            console.error("Error adding caller ICE candidate:", err);
+          }
         },
       );
 
@@ -100,6 +110,8 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
       // Update state
       setActiveCallId(callId);
       setIncomingCall(null);
+
+      console.log("Call answered successfully, waiting for connection...");
     } catch (err) {
       console.error("Error answering call:", err);
     }

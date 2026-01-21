@@ -40,6 +40,8 @@ export class WebRTCPeerConnection {
     this.pc.onicecandidate = (event) => {
       if (event.candidate && this.callbacks.onIceCandidate) {
         this.callbacks.onIceCandidate(event.candidate);
+      } else if (!event.candidate) {
+        console.log("ICE gathering complete");
       }
     };
 
@@ -56,6 +58,21 @@ export class WebRTCPeerConnection {
         this.callbacks.onConnectionStateChange(this.pc.connectionState);
       }
       console.log("Connection state:", this.pc.connectionState);
+    };
+
+    // Handle ICE connection state changes
+    this.pc.oniceconnectionstatechange = () => {
+      console.log("ICE connection state:", this.pc.iceConnectionState);
+    };
+
+    // Handle ICE gathering state changes
+    this.pc.onicegatheringstatechange = () => {
+      console.log("ICE gathering state:", this.pc.iceGatheringState);
+    };
+
+    // Handle signaling state changes
+    this.pc.onsignalingstatechange = () => {
+      console.log("Signaling state:", this.pc.signalingState);
     };
   }
 

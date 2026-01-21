@@ -30,6 +30,7 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<WebRTCPeerConnection | null>(null);
+  const unsubscribersRef = useRef<Array<() => void>>([]);
 
   // Listen for incoming calls
   useEffect(() => {
@@ -85,10 +86,16 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
       await setCallAnswer(callId, answer);
 
       // Listen for caller ICE candidates
-      listenForCallerCandidates(callId, async (candidate) => {
-        console.log("Received caller ICE candidate");
-        await pc.addIceCandidate(candidate);
-      });
+      const unsubCandidates = listenForCallerCandidates(
+        callId,
+        async (candidate) => {
+          console.log("Received caller ICE candidate");
+          await pc.addIceCandidate(candidate);
+        },
+      );
+
+      // Store unsubscriber
+      unsubscribersRef.current.push(unsubCandidates);
 
       // Update state
       setActiveCallId(callId);
@@ -105,6 +112,10 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
 
   // End active call
   const endCall = () => {
+    // Unsubscribe from Firebase listeners first
+    unsubscribersRef.current.forEach((unsub) => unsub());
+    unsubscribersRef.current = [];
+
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
       peerConnectionRef.current = null;
@@ -122,6 +133,9 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Unsubscribe from Firebase listeners
+      unsubscribersRef.current.forEach((unsub) => unsub());
+
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
       }

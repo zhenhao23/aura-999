@@ -28,6 +28,7 @@ export default function CallerPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<WebRTCPeerConnection | null>(null);
+  const unsubscribersRef = useRef<Array<() => void>>([]);
 
   // Start emergency call
   const startCall = async () => {
@@ -74,16 +75,22 @@ export default function CallerPage() {
       setIsCallActive(true);
 
       // Listen for answer from dispatcher
-      listenForAnswer(newCallId, async (answer) => {
+      const unsubAnswer = listenForAnswer(newCallId, async (answer) => {
         console.log("Received answer from dispatcher");
         await pc.setRemoteDescription(answer);
       });
 
       // Listen for dispatcher ICE candidates
-      listenForDispatcherCandidates(newCallId, async (candidate) => {
-        console.log("Received dispatcher ICE candidate");
-        await pc.addIceCandidate(candidate);
-      });
+      const unsubCandidates = listenForDispatcherCandidates(
+        newCallId,
+        async (candidate) => {
+          console.log("Received dispatcher ICE candidate");
+          await pc.addIceCandidate(candidate);
+        },
+      );
+
+      // Store unsubscribers
+      unsubscribersRef.current = [unsubAnswer, unsubCandidates];
     } catch (err) {
       console.error("Error starting call:", err);
       setError(err instanceof Error ? err.message : "Failed to start call");
@@ -93,6 +100,10 @@ export default function CallerPage() {
   // End call
   const handleEndCall = async () => {
     try {
+      // Unsubscribe from Firebase listeners first
+      unsubscribersRef.current.forEach((unsub) => unsub());
+      unsubscribersRef.current = [];
+
       // Stop all tracks
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
@@ -122,6 +133,9 @@ export default function CallerPage() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Unsubscribe from Firebase listeners
+      unsubscribersRef.current.forEach((unsub) => unsub());
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }

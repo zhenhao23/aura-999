@@ -71,11 +71,19 @@ export class WebRTCPeerConnection {
 
   // Set remote description
   async setRemoteDescription(description: RTCSessionDescriptionInit) {
+    if (this.pc.signalingState === "closed") {
+      console.warn("Cannot set remote description - connection is closed");
+      return;
+    }
     await this.pc.setRemoteDescription(new RTCSessionDescription(description));
   }
 
   // Add ICE candidate
   async addIceCandidate(candidate: RTCIceCandidateInit) {
+    if (this.pc.signalingState === "closed") {
+      console.warn("Cannot add ICE candidate - connection is closed");
+      return;
+    }
     await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
   }
 

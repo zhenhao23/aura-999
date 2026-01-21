@@ -133,4 +133,9 @@ export class WebRTCPeerConnection {
   getConnectionState(): RTCPeerConnectionState {
     return this.pc.connectionState;
   }
+
+  // Get senders (for track replacement)
+  getSenders(): RTCRtpSender[] {
+    return this.pc.getSenders();
+  }
 }

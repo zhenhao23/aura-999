@@ -1,8 +1,19 @@
-// WebRTC configuration with STUN server
+// WebRTC configuration with STUN and TURN servers
 export const rtcConfig: RTCConfiguration = {
   iceServers: [
     {
       urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"],
+    },
+    {
+      // Free TURN server from Metered.ca (works for mobile networks)
+      urls: [
+        "turn:a.relay.metered.ca:80",
+        "turn:a.relay.metered.ca:80?transport=tcp",
+        "turn:a.relay.metered.ca:443",
+        "turn:a.relay.metered.ca:443?transport=tcp",
+      ],
+      username: "987654321", // Free public credentials
+      credential: "987654321",
     },
   ],
   iceCandidatePoolSize: 10,

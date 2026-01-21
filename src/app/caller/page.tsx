@@ -19,6 +19,8 @@ import {
   PhoneOff,
   MessageSquare,
   SwitchCamera,
+  X,
+  Send,
 } from "lucide-react";
 
 export default function CallerPage() {
@@ -29,6 +31,16 @@ export default function CallerPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState<
+    Array<{
+      id: string;
+      content: string;
+      sender: "caller" | "dispatcher";
+      timestamp: Date;
+    }>
+  >([]);
+  const [inputValue, setInputValue] = useState("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -36,6 +48,7 @@ export default function CallerPage() {
   const unsubscribersRef = useRef<Array<() => void>>([]);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const callIdRef = useRef<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Start emergency call
   const startCall = async () => {
@@ -190,6 +203,31 @@ export default function CallerPage() {
       setError("Failed to switch camera");
     }
   };
+
+  // Toggle chat panel
+  const toggleChat = () => {
+    setIsChatOpen(!isChatOpen);
+  };
+
+  // Send message
+  const handleSendMessage = () => {
+    if (inputValue.trim() && callId) {
+      const newMessage = {
+        id: Date.now().toString(),
+        content: inputValue,
+        sender: "caller" as const,
+        timestamp: new Date(),
+      };
+      setMessages([...messages, newMessage]);
+      setInputValue("");
+      // TODO: Send message to Firebase/dispatcher
+    }
+  };
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   // End call
   const handleEndCall = async () => {
@@ -363,8 +401,12 @@ export default function CallerPage() {
 
             {/* Chat Button */}
             <button
-              onClick={() => alert("Chat feature coming soon!")}
-              className="w-16 h-16 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all text-white"
+              onClick={toggleChat}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                isChatOpen
+                  ? "bg-white hover:bg-white/90 text-gray-900"
+                  : "bg-white/20 hover:bg-white/30 text-white"
+              }`}
               title="Open Chat"
             >
               <MessageSquare size={24} />
@@ -384,6 +426,78 @@ export default function CallerPage() {
       {error && isCallActive && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 p-4 bg-red-900/90 border border-red-500 rounded-lg text-red-200 text-sm max-w-md shadow-lg">
           <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Chat Panel */}
+      {isChatOpen && isCallActive && (
+        <div className="absolute right-4 bottom-32 w-80 h-96 bg-black/90 backdrop-blur-md rounded-lg shadow-2xl border border-white/20 flex flex-col">
+          {/* Chat Header */}
+          <div className="flex items-center justify-between p-4 border-b border-white/20">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={18} className="text-white" />
+              <h3 className="text-white font-semibold text-sm">Chat</h3>
+            </div>
+            <button
+              onClick={toggleChat}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all text-white"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            {messages.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">
+                No messages yet
+              </p>
+            ) : (
+              <>
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${
+                      message.sender === "caller"
+                        ? "justify-end"
+                        : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`rounded-lg px-3 py-2 max-w-[80%] ${
+                        message.sender === "caller"
+                          ? "bg-blue-600 text-white"
+                          : "bg-white/20 text-white"
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="p-4 border-t border-white/20">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                placeholder="Type a message..."
+                className="flex-1 px-3 py-2 text-sm bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/40 text-white placeholder-gray-400"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="w-10 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 flex items-center justify-center transition-all text-white"
+              >
+                <Send size={18} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

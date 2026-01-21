@@ -29,6 +29,7 @@ export default function CallerPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<WebRTCPeerConnection | null>(null);
   const unsubscribersRef = useRef<Array<() => void>>([]);
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const callIdRef = useRef<string | null>(null);
 
   // Start emergency call
@@ -49,22 +50,16 @@ export default function CallerPage() {
         videoRef.current.srcObject = stream;
       }
 
-      // Create offer first to get callId before setting up peer connection
-      const tempPc = new WebRTCPeerConnection({});
-      tempPc.addStream(stream);
-      const offer = await tempPc.createOffer();
-
-      // Save offer to Firebase and get callId
-      const newCallId = await createCall(offer);
-      setCallId(newCallId);
-      callIdRef.current = newCallId;
-      setIsCallActive(true);
-
-      // Now create the real peer connection with callId available
+      // Create peer connection
       const pc = new WebRTCPeerConnection({
         onIceCandidate: (candidate) => {
           console.log("Caller ICE candidate:", candidate);
-          addCallerCandidate(newCallId, candidate.toJSON());
+          // Store candidate if callId not yet available
+          if (callIdRef.current) {
+            addCallerCandidate(callIdRef.current, candidate.toJSON());
+          } else {
+            pendingCandidatesRef.current.push(candidate.toJSON());
+          }
         },
         onConnectionStateChange: (state) => {
           setConnectionState(state);
@@ -80,8 +75,20 @@ export default function CallerPage() {
       // Add local stream to peer connection
       pc.addStream(stream);
 
-      // Set local description with the same offer
-      await pc.setLocalDescription(offer);
+      // Create offer
+      const offer = await pc.createOffer();
+
+      // Save offer to Firebase and get callId
+      const newCallId = await createCall(offer);
+      setCallId(newCallId);
+      callIdRef.current = newCallId;
+      setIsCallActive(true);
+
+      // Send any pending ICE candidates
+      pendingCandidatesRef.current.forEach((candidate) => {
+        addCallerCandidate(newCallId, candidate);
+      });
+      pendingCandidatesRef.current = [];
 
       // Listen for answer from dispatcher
       const unsubAnswer = listenForAnswer(newCallId, async (answer) => {
@@ -108,9 +115,6 @@ export default function CallerPage() {
 
       // Store unsubscribers
       unsubscribersRef.current = [unsubAnswer, unsubCandidates];
-
-      // Close temporary peer connection
-      tempPc.close();
     } catch (err) {
       console.error("Error starting call:", err);
       setError(err instanceof Error ? err.message : "Failed to start call");

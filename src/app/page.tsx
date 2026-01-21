@@ -83,9 +83,14 @@ export default function Home() {
               🚨 Open Dispatcher Dashboard
             </Button>
           </Link>
-          <Button size="lg" variant="outline" className="text-base px-8">
-            📱 Caller Interface (Coming Soon)
-          </Button>
+          <Link href="/caller">
+            <Button
+              size="lg"
+              className="text-base px-8 bg-blue-600 hover:bg-blue-700"
+            >
+              📱 Caller Interface
+            </Button>
+          </Link>
         </div>
 
         <div className="mt-12 text-center space-y-2">

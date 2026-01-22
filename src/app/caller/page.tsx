@@ -9,7 +9,10 @@ import {
   listenForAnswer,
   listenForDispatcherCandidates,
   endCall,
+  updateCallerLocation,
+  addLocationToHistory,
 } from "@/lib/firebase/signaling";
+import { GeoPoint } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import {
   Volume2,
@@ -41,6 +44,14 @@ export default function CallerPage() {
     }>
   >([]);
   const [inputValue, setInputValue] = useState("");
+  const [locationPermission, setLocationPermission] = useState<
+    "prompt" | "granted" | "denied"
+  >("prompt");
+  const [currentLocation, setCurrentLocation] = useState<{
+    lat: number;
+    lng: number;
+    accuracy: number;
+  } | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -49,6 +60,130 @@ export default function CallerPage() {
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const callIdRef = useRef<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const lastLocationUpdateRef = useRef<number>(0);
+  const hasSetRemoteDescriptionRef = useRef<boolean>(false);
+
+  // Reverse geocode coordinates to address
+  const reverseGeocode = async (
+    lat: number,
+    lng: number,
+  ): Promise<string | undefined> => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
+      );
+      const data = await response.json();
+      if (data.results && data.results.length > 0) {
+        return data.results[0].formatted_address;
+      }
+    } catch (err) {
+      console.error("Geocoding error:", err);
+    }
+    return undefined;
+  };
+
+  // Start tracking caller's location
+  const startLocationTracking = (callId: string) => {
+    if (!navigator.geolocation) {
+      console.error("Geolocation not supported");
+      setLocationPermission("denied");
+      return;
+    }
+
+    const options: PositionOptions = {
+      enableHighAccuracy: true, // Use GPS
+      timeout: 30000, // 30 seconds - GPS can take time to get first fix
+      maximumAge: 5000, // Allow cached position up to 5 seconds old
+    };
+
+    const handleSuccess = async (position: GeolocationPosition) => {
+      const { latitude, longitude, accuracy, heading, speed } = position.coords;
+      const now = Date.now();
+
+      // Update local state
+      setCurrentLocation({ lat: latitude, lng: longitude, accuracy });
+
+      // Throttle Firebase updates: only if moved >10m OR 10 seconds passed
+      const timeSinceLastUpdate = now - lastLocationUpdateRef.current;
+      const shouldUpdate =
+        timeSinceLastUpdate > 10000 || // 10 seconds
+        !lastLocationUpdateRef.current; // First update
+
+      if (shouldUpdate) {
+        lastLocationUpdateRef.current = now;
+
+        // Get address (cached for similar coords)
+        const address = await reverseGeocode(latitude, longitude);
+
+        // Update Firebase - only include heading/speed if they exist
+        try {
+          const locationData: any = {
+            coords: new GeoPoint(latitude, longitude),
+            address,
+            accuracy,
+            timestamp: new Date() as any,
+            source: "gps" as const,
+          };
+
+          // Only add heading and speed if they have valid values
+          if (heading !== null && heading !== undefined) {
+            locationData.heading = heading;
+          }
+          if (speed !== null && speed !== undefined) {
+            locationData.speed = speed;
+          }
+
+          await updateCallerLocation(callId, locationData);
+
+          // Also add to history for trail
+          await addLocationToHistory(callId, locationData);
+
+          console.log("Location updated:", { latitude, longitude, accuracy });
+        } catch (err) {
+          console.error("Failed to update location:", err);
+        }
+      }
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+      console.error("Geolocation error:", error);
+
+      // Don't set permission to denied for timeout errors - GPS might work later
+      if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
+        setLocationPermission("denied");
+        setError(
+          "Location permission denied. Emergency responders cannot track your location.",
+        );
+      } else if (error.code === GeolocationPositionError.TIMEOUT) {
+        setError(
+          "Getting GPS location is taking longer than usual. Please ensure you're outdoors with clear sky view.",
+        );
+      } else {
+        setError("Location temporarily unavailable. Trying to reconnect...");
+      }
+    };
+
+    // Start watching position
+    const watchId = navigator.geolocation.watchPosition(
+      handleSuccess,
+      handleError,
+      options,
+    );
+
+    watchIdRef.current = watchId;
+    setLocationPermission("granted");
+    console.log("Location tracking started");
+  };
+
+  // Stop location tracking
+  const stopLocationTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      console.log("Location tracking stopped");
+    }
+  };
 
   // Start emergency call
   const startCall = async () => {
@@ -101,6 +236,7 @@ export default function CallerPage() {
       setCallId(newCallId);
       callIdRef.current = newCallId;
       setIsCallActive(true);
+      hasSetRemoteDescriptionRef.current = false; // Reset flag for new call
 
       // Send any pending ICE candidates
       pendingCandidatesRef.current.forEach((candidate) => {
@@ -111,8 +247,17 @@ export default function CallerPage() {
       // Listen for answer from dispatcher
       const unsubAnswer = listenForAnswer(newCallId, async (answer) => {
         console.log("Received answer from dispatcher");
+
+        // Only set remote description once
+        if (hasSetRemoteDescriptionRef.current) {
+          console.log("Remote description already set, skipping");
+          return;
+        }
+
         try {
           await pc.setRemoteDescription(answer);
+          hasSetRemoteDescriptionRef.current = true;
+          console.log("Remote description set successfully");
         } catch (err) {
           console.error("Error setting remote description:", err);
         }
@@ -133,6 +278,9 @@ export default function CallerPage() {
 
       // Store unsubscribers
       unsubscribersRef.current = [unsubAnswer, unsubCandidates];
+
+      // Start location tracking
+      startLocationTracking(newCallId);
     } catch (err) {
       console.error("Error starting call:", err);
       setError(err instanceof Error ? err.message : "Failed to start call");
@@ -232,6 +380,9 @@ export default function CallerPage() {
   // End call
   const handleEndCall = async () => {
     try {
+      // Stop location tracking
+      stopLocationTracking();
+
       // Unsubscribe from Firebase listeners first
       unsubscribersRef.current.forEach((unsub) => unsub());
       unsubscribersRef.current = [];
@@ -258,6 +409,7 @@ export default function CallerPage() {
       setCallId(null);
       setConnectionState("new");
       setIsMuted(false);
+      hasSetRemoteDescriptionRef.current = false;
     } catch (err) {
       console.error("Error ending call:", err);
     }
@@ -266,6 +418,9 @@ export default function CallerPage() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Stop location tracking
+      stopLocationTracking();
+
       // Unsubscribe from Firebase listeners
       unsubscribersRef.current.forEach((unsub) => unsub());
 
@@ -340,6 +495,17 @@ export default function CallerPage() {
               <p className="text-xs text-gray-300">
                 ID: {callId?.substring(0, 8)}
               </p>
+              {/* Location status */}
+              {locationPermission === "granted" && currentLocation && (
+                <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                  📍 Location shared (±{Math.round(currentLocation.accuracy)}m)
+                </p>
+              )}
+              {locationPermission === "denied" && (
+                <p className="text-xs text-red-400 mt-1">
+                  ⚠️ Location unavailable
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-3">
               {getConnectionBadge()}

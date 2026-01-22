@@ -7,12 +7,17 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Incident } from "@/types";
+import { CallerLocation } from "@/lib/firebase/signaling";
 
 interface IntelligentSummaryProps {
   incident: Incident | null;
+  callerLocation?: CallerLocation | null;
 }
 
-export function IntelligentSummary({ incident }: IntelligentSummaryProps) {
+export function IntelligentSummary({
+  incident,
+  callerLocation,
+}: IntelligentSummaryProps) {
   if (!incident) {
     return (
       <Card className="pointer-events-auto">
@@ -39,9 +44,32 @@ export function IntelligentSummary({ incident }: IntelligentSummaryProps) {
             {incident.urgency.toUpperCase().replace("-", " ")}
           </Badge>
         </div>
-        <CardDescription>{incident.location.address}</CardDescription>
+        <CardDescription>
+          {callerLocation?.address || incident.location.address}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Live Location */}
+        {callerLocation && (
+          <div className="bg-blue-950/30 border border-blue-500/50 rounded p-2">
+            <h4 className="font-semibold text-xs mb-1 text-blue-400 flex items-center gap-1">
+              📍 Live Caller Location
+            </h4>
+            <p className="text-xs text-gray-300">
+              {callerLocation.coords.latitude.toFixed(6)},{" "}
+              {callerLocation.coords.longitude.toFixed(6)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Accuracy: ±{Math.round(callerLocation.accuracy)}m
+            </p>
+            {callerLocation.address && (
+              <p className="text-xs text-gray-300 mt-1">
+                {callerLocation.address}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Summary */}
         <div>
           <h4 className="font-semibold text-xs mb-1">Situation</h4>

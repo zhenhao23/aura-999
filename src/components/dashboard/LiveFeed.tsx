@@ -207,7 +207,7 @@ export function LiveFeed({ videoUrl, transcript }: LiveFeedProps) {
         )}
 
         {/* Video Player */}
-        <div className="aspect-[9/16] bg-black rounded-lg overflow-hidden relative">
+        <div className="w-3/4 mx-auto aspect-[9/16] bg-black rounded-lg overflow-hidden relative">
           <video
             ref={videoRef}
             autoPlay

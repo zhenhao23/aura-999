@@ -7,8 +7,19 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
+  GeoPoint,
 } from "firebase/firestore";
 import { db } from "./config";
+
+export interface CallerLocation {
+  coords: GeoPoint;
+  address?: string;
+  accuracy: number; // in meters
+  timestamp: Timestamp;
+  source: "gps" | "network" | "manual";
+  heading?: number; // direction of movement
+  speed?: number; // speed in m/s
+}
 
 export interface CallData {
   id?: string;
@@ -16,6 +27,9 @@ export interface CallData {
   answer?: RTCSessionDescriptionInit;
   status: "waiting" | "connected" | "ended";
   timestamp: Timestamp;
+  currentLocation?: CallerLocation;
+  locationPermissionGranted?: boolean;
+  lastLocationUpdate?: Timestamp;
   metadata?: {
     location?: string;
     callerInfo?: string;
@@ -167,6 +181,48 @@ export async function getCall(callId: string): Promise<CallData | null> {
   }
 
   return null;
+}
+
+// Update caller's location
+export async function updateCallerLocation(
+  callId: string,
+  location: CallerLocation,
+): Promise<void> {
+  const callRef = doc(db, "calls", callId);
+  await setDoc(
+    callRef,
+    {
+      currentLocation: location,
+      lastLocationUpdate: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+// Add location to history
+export async function addLocationToHistory(
+  callId: string,
+  location: CallerLocation,
+): Promise<void> {
+  const locationRef = collection(db, "calls", callId, "locationHistory");
+  await addDoc(locationRef, location);
+}
+
+// Listen for location updates (dispatcher side)
+export function listenForLocationUpdates(
+  callId: string,
+  callback: (location: CallerLocation) => void,
+): () => void {
+  const callRef = doc(db, "calls", callId);
+
+  const unsubscribe = onSnapshot(callRef, (snapshot) => {
+    const data = snapshot.data() as CallData;
+    if (data?.currentLocation) {
+      callback(data.currentLocation);
+    }
+  });
+
+  return unsubscribe;
 }
 
 // End call

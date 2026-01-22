@@ -82,7 +82,16 @@ export function generateResourceSuggestions(
         station.location.lat,
         station.location.lng,
       );
-      const eta = calculateETA(distance);
+
+      // Mock ETA data for demo
+      const mockETA: Record<string, number> = {
+        PDRM: 14, // Police
+        KKM: 13, // Hospital/Medical
+        JBPM: 9, // Fire
+        APM: 12,
+        MMEA: 15,
+      };
+      const eta = mockETA[req.agency] || calculateETA(distance);
 
       const resource: Resource = {
         id: `res-${req.agency}-${index}`,

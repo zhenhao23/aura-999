@@ -1,39 +1,39 @@
 import { Station } from "@/types/resource";
 
-// Sample stations in Petaling Jaya / Selangor area
+// Sample stations in Cyberjaya / Putrajaya area
 export const STATIONS: Station[] = [
   // JBPM Fire Stations
   {
-    id: "jbpm-subang-01",
-    name: "Subang Jaya Fire and Rescue Station",
+    id: "jbpm-cyberjaya-01",
+    name: "Cyberjaya Fire and Rescue Station",
     location: {
-      lat: 3.073777673006374,
-      lng: 101.5848215012202,
-      address: "Subang Jaya, Selangor",
+      lat: 2.9131493612295953,
+      lng: 101.6567638644686,
+      address: "Cyberjaya, Selangor",
     },
     agency: "JBPM",
   },
 
   // PDRM Police Stations
   {
-    id: "pdrm-subang-01",
-    name: "Balai Polis Subang Jaya",
+    id: "pdrm-putrajaya-01",
+    name: "Putrajaya District Police Headquarters",
     location: {
-      lat: 3.074115972110228,
-      lng: 101.58538309337122,
-      address: "Subang Jaya, Selangor",
+      lat: 2.9316733849006855,
+      lng: 101.67553132584459,
+      address: "Putrajaya, Federal Territory",
     },
     agency: "PDRM",
   },
 
   // KKM Medical Centers
   {
-    id: "kkm-subang-01",
-    name: "Subang Jaya Medical Centre",
+    id: "kkm-putrajaya-01",
+    name: "Putrajaya Hospital",
     location: {
-      lat: 3.0797308956890954,
-      lng: 101.59403819529611,
-      address: "Subang Jaya, Selangor",
+      lat: 2.929352911961223,
+      lng: 101.67429215468071,
+      address: "Putrajaya, Federal Territory",
     },
     agency: "KKM",
   },

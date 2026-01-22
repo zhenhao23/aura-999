@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { IntelligentSummary } from "@/components/dashboard/IntelligentSummary";
 import { ResourceAllocation } from "@/components/dashboard/ResourceAllocation";
@@ -10,6 +10,11 @@ import { TacticalMap } from "@/components/map/TacticalMap";
 import { MOCK_INCIDENTS } from "@/data/mock-incidents";
 import { generateResourceSuggestions } from "@/lib/resource-optimizer";
 import { Message, ResourceAllocationSuggestion } from "@/types";
+import {
+  listenForIncomingCalls,
+  listenForLocationUpdates,
+  CallerLocation,
+} from "@/lib/firebase/signaling";
 
 export default function DashboardPage() {
   // Use the first mock incident as the active incident
@@ -28,6 +33,48 @@ export default function DashboardPage() {
     },
   ]);
   const [dispatchedResources, setDispatchedResources] = useState<string[]>([]);
+  const [deniedResources, setDeniedResources] = useState<string[]>([]);
+  const [callerLocation, setCallerLocation] = useState<CallerLocation | null>(
+    null,
+  );
+  const [activeCallId, setActiveCallId] = useState<string | null>(null);
+
+  // Listen for incoming calls and location updates
+  useEffect(() => {
+    const unsubscribeCalls = listenForIncomingCalls((callId, callData) => {
+      console.log("Incoming call:", callId, callData);
+      setActiveCallId(callId);
+
+      // If call already has location, set it
+      if (callData.currentLocation) {
+        setCallerLocation(callData.currentLocation);
+      }
+    });
+
+    return () => {
+      unsubscribeCalls();
+    };
+  }, []);
+
+  // Listen for location updates on active call
+  useEffect(() => {
+    if (!activeCallId) return;
+
+    const unsubscribeLocation = listenForLocationUpdates(
+      activeCallId,
+      (location) => {
+        console.log("Location update:", location);
+        setCallerLocation(location);
+
+        // Optionally update incident location
+        // This would require updating the incident state
+      },
+    );
+
+    return () => {
+      unsubscribeLocation();
+    };
+  }, [activeCallId]);
 
   const handleApprove = (resourceId: string) => {
     console.log("Approved resource:", resourceId);
@@ -36,6 +83,7 @@ export default function DashboardPage() {
 
   const handleDeny = (resourceId: string) => {
     console.log("Denied resource:", resourceId);
+    setDeniedResources((prev) => [...prev, resourceId]);
   };
 
   const handleSendMessage = (content: string) => {
@@ -49,9 +97,11 @@ export default function DashboardPage() {
     setMessages((prev) => [...prev, newMessage]);
   };
 
-  // Filter out dispatched resources from suggestions
+  // Filter out dispatched and denied resources from suggestions
   const availableSuggestions = suggestions.filter(
-    (s) => !dispatchedResources.includes(s.resource.id),
+    (s) =>
+      !dispatchedResources.includes(s.resource.id) &&
+      !deniedResources.includes(s.resource.id),
   );
 
   return (
@@ -62,13 +112,17 @@ export default function DashboardPage() {
           incident={activeIncident}
           dispatchedResources={dispatchedResources}
           suggestions={suggestions}
+          callerLocation={callerLocation}
         />
       </div>
 
       {/* Quadrant Grid Overlay */}
       <div className="absolute inset-0 z-10 grid grid-cols-8 grid-rows-2 gap-4 p-4 pointer-events-none">
         <div className="col-span-2 overflow-auto pointer-events-auto">
-          <IntelligentSummary incident={activeIncident} />
+          <IntelligentSummary
+            incident={activeIncident}
+            callerLocation={callerLocation}
+          />
         </div>
 
         <div className="col-span-3 pointer-events-none"></div>

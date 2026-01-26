@@ -49,17 +49,35 @@ export interface IceCandidate {
 
 // Create a new call session
 export async function createCall(
-  offer: RTCSessionDescriptionInit,
+  offer?: RTCSessionDescriptionInit,
 ): Promise<string> {
-  const callData: Omit<CallData, "id"> = {
-    offer,
+  const callData: any = {
     status: "waiting",
     timestamp: serverTimestamp() as Timestamp,
   };
 
+  // Only include offer if provided (Firestore doesn't accept undefined)
+  if (offer) {
+    callData.offer = offer;
+  }
+
   const callRef = await addDoc(collection(db, "calls"), callData);
-  console.log("Call created with ID:", callRef.id);
   return callRef.id;
+}
+
+// Set offer for a call (used when WebRTC handoff starts)
+export async function setCallOffer(
+  callId: string,
+  offer: RTCSessionDescriptionInit,
+): Promise<void> {
+  const callRef = doc(db, "calls", callId);
+  await setDoc(
+    callRef,
+    {
+      offer,
+    },
+    { merge: true },
+  );
 }
 
 // Set answer for a call

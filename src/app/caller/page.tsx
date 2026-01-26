@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { WebRTCPeerConnection } from "@/lib/webrtc/peer-connection";
 import {
   createCall,
+  setCallOffer,
   addCallerCandidate,
   listenForAnswer,
   listenForDispatcherCandidates,
@@ -68,6 +69,7 @@ export default function CallerPage() {
   const watchIdRef = useRef<number | null>(null);
   const lastLocationUpdateRef = useRef<number>(0);
   const hasSetRemoteDescriptionRef = useRef<boolean>(false);
+  const hasInitiatedWebRTCRef = useRef<boolean>(false);
   const audioRecorderRef = useRef<SimpleAudioRecorder | null>(null);
   const videoIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -86,9 +88,7 @@ export default function CallerPage() {
 
   // Handler for when AI requests transfer to dispatcher
   async function handleDispatcherHandoff() {
-    console.log("🔄 AI requesting transfer to dispatcher...");
     setCurrentPhase("transferring");
-    // Dispatcher will accept from their dashboard, we just wait
   }
 
   // Reverse geocode coordinates to address
@@ -162,11 +162,7 @@ export default function CallerPage() {
           }
 
           await updateCallerLocation(callId, locationData);
-
-          // Also add to history for trail
           await addLocationToHistory(callId, locationData);
-
-          console.log("Location updated:", { latitude, longitude, accuracy });
         } catch (err) {
           console.error("Failed to update location:", err);
         }
@@ -200,7 +196,6 @@ export default function CallerPage() {
 
     watchIdRef.current = watchId;
     setLocationPermission("granted");
-    console.log("Location tracking started");
   };
 
   // Stop location tracking
@@ -208,7 +203,6 @@ export default function CallerPage() {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
-      console.log("Location tracking stopped");
     }
   };
 
@@ -230,9 +224,8 @@ export default function CallerPage() {
         videoRef.current.srcObject = stream;
       }
 
-      // Create call in Firebase
-      const offer = { type: "offer" as const, sdp: "" }; // Placeholder, real WebRTC comes later
-      const newCallId = await createCall(offer);
+      // Create call in Firebase WITHOUT WebRTC offer (AI phase only)
+      const newCallId = await createCall();
       setCallId(newCallId);
       callIdRef.current = newCallId;
       setIsCallActive(true);
@@ -242,7 +235,6 @@ export default function CallerPage() {
       startLocationTracking(newCallId);
 
       // Connect to AI agent
-      console.log("🤖 Connecting to AI agent...");
       await connectAI(newCallId);
 
       // Start audio recording and send to AI
@@ -251,7 +243,6 @@ export default function CallerPage() {
         sendAudioToAI(base64Audio);
       });
       audioRecorderRef.current = recorder;
-      console.log("🎤 Audio recorder started");
 
       // Send video frames every 2 seconds
       const interval = setInterval(() => {
@@ -295,13 +286,18 @@ export default function CallerPage() {
   const startWebRTCConnection = async () => {
     if (!streamRef.current || !callId) return;
 
-    try {
-      console.log("📞 Starting WebRTC connection to dispatcher...");
+    // Don't create multiple connections
+    if (hasInitiatedWebRTCRef.current || peerConnectionRef.current) {
+      console.log("⚠️ WebRTC connection already initiated, skipping");
+      return;
+    }
+    hasInitiatedWebRTCRef.current = true;
+    console.log("✅ Creating WebRTC peer connection...");
 
+    try {
       // Create peer connection
       const pc = new WebRTCPeerConnection({
         onIceCandidate: (candidate) => {
-          console.log("Caller ICE candidate:", candidate);
           if (callIdRef.current) {
             addCallerCandidate(callIdRef.current, candidate.toJSON());
           } else {
@@ -310,7 +306,6 @@ export default function CallerPage() {
         },
         onConnectionStateChange: (state) => {
           setConnectionState(state);
-          console.log("Caller connection state:", state);
           if (state === "failed" || state === "disconnected") {
             setError("Connection failed. Please try again.");
           }
@@ -323,24 +318,27 @@ export default function CallerPage() {
       pc.addStream(streamRef.current);
 
       // Create offer
+      console.log("📝 Creating WebRTC offer...");
       const offer = await pc.createOffer();
 
-      // Update call with real offer (overwrite AI placeholder)
-      // This would need a new Firebase function - for now we'll work with existing structure
+      // Save offer to Firebase
+      console.log("💾 Saving offer to Firebase...");
+      await setCallOffer(callId, offer);
+      console.log("✅ Offer saved successfully");
+
+      // Send any pending ICE candidates
+      pendingCandidatesRef.current.forEach((candidate) => {
+        addCallerCandidate(callId, candidate);
+      });
+      pendingCandidatesRef.current = [];
 
       // Listen for answer from dispatcher
       const unsubAnswer = listenForAnswer(callId, async (answer) => {
-        console.log("Received answer from dispatcher");
-
-        if (hasSetRemoteDescriptionRef.current) {
-          console.log("Remote description already set, skipping");
-          return;
-        }
+        if (hasSetRemoteDescriptionRef.current) return;
 
         try {
           await pc.setRemoteDescription(answer);
           hasSetRemoteDescriptionRef.current = true;
-          console.log("Remote description set successfully");
         } catch (err) {
           console.error("Error setting remote description:", err);
         }
@@ -350,7 +348,7 @@ export default function CallerPage() {
       const unsubCandidates = listenForDispatcherCandidates(
         callId,
         async (candidate) => {
-          console.log("Received dispatcher ICE candidate");
+          console.log("📥 Received dispatcher ICE candidate");
           try {
             await pc.addIceCandidate(candidate);
           } catch (err) {
@@ -360,9 +358,15 @@ export default function CallerPage() {
       );
 
       // Store unsubscribers
-      unsubscribersRef.current = [unsubAnswer, unsubCandidates];
+      unsubscribersRef.current = [
+        ...unsubscribersRef.current,
+        unsubAnswer,
+        unsubCandidates,
+      ];
     } catch (err) {
       console.error("Error starting WebRTC:", err);
+      setError("Failed to establish connection with dispatcher");
+      hasInitiatedWebRTCRef.current = false;
     }
   };
 
@@ -371,12 +375,12 @@ export default function CallerPage() {
     if (!callId) return;
 
     const unsubscribe = listenForCallPhase(callId, (phase) => {
-      console.log(`📡 Call phase changed to: ${phase}`);
+      console.log("📞 Call phase changed to:", phase);
       setCurrentPhase(phase);
 
       if (phase === "dispatcher-active") {
         // Dispatcher accepted - start WebRTC connection
-        console.log("👨‍🚒 Dispatcher accepted call!");
+        console.log("🚀 Starting WebRTC connection to dispatcher...");
         startWebRTCConnection();
       }
     });
@@ -523,6 +527,7 @@ export default function CallerPage() {
       setIsMuted(false);
       setCurrentPhase("ai-screening");
       hasSetRemoteDescriptionRef.current = false;
+      hasInitiatedWebRTCRef.current = false;
     } catch (err) {
       console.error("Error ending call:", err);
     }

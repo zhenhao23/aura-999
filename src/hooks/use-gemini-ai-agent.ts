@@ -36,28 +36,24 @@ export function useGeminiAIAgent({
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey) {
-      console.error("❌ NEXT_PUBLIC_GEMINI_API_KEY is not set");
+      console.error("NEXT_PUBLIC_GEMINI_API_KEY is not set");
       return;
     }
 
-    console.log("🔧 Initializing GeminiLiveClient...");
     const client = new GeminiLiveClient(apiKey);
     clientRef.current = client;
-    console.log("✅ GeminiLiveClient initialized");
 
     // Set up event listeners
     client.on("open", () => {
-      console.log("✅ AI Agent WebSocket connected");
       setIsConnected(true);
     });
 
     client.on("close", () => {
-      console.log("❌ AI Agent WebSocket disconnected");
       setIsConnected(false);
     });
 
     client.on("error", (error) => {
-      console.error("❌ AI Agent error:", error);
+      console.error("AI Agent error:", error);
     });
 
     client.on("audio", (audioData) => {
@@ -85,15 +81,9 @@ export function useGeminiAIAgent({
   // Connect to Gemini Live API when call starts
   const connect = useCallback(
     async (activeCallId?: string) => {
-      console.log("🔌 [Hook] Connect called");
-      console.log("🔌 [Hook] clientRef.current:", clientRef.current);
-      console.log("🔌 [Hook] callId from state:", callId);
-      console.log("🔌 [Hook] callId from param:", activeCallId);
-
       const targetCallId = activeCallId || callId;
 
       if (!clientRef.current || !targetCallId) {
-        console.error("❌ [Hook] Cannot connect - missing client or callId");
         return false;
       }
       const config = {
@@ -107,9 +97,7 @@ export function useGeminiAIAgent({
         tools: [{ functionDeclarations: [assessUrgencyTool] }],
       };
 
-      console.log("🔌 Connecting to Gemini with config:", config);
       const success = await clientRef.current.connect(config);
-      console.log("🔌 Connection success:", success);
       if (success && targetCallId) {
         await updateCallPhase(targetCallId, "ai-screening");
         setCurrentPhase("ai-screening");

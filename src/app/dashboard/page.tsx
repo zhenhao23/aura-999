@@ -6,6 +6,7 @@ import { IntelligentSummary } from "@/components/dashboard/IntelligentSummary";
 import { ResourceAllocation } from "@/components/dashboard/ResourceAllocation";
 import { LiveFeed } from "@/components/dashboard/LiveFeed";
 import { UniversalComms } from "@/components/dashboard/UniversalComms";
+import { IncomingCallAlert } from "@/components/dashboard/IncomingCallAlert";
 import { TacticalMap } from "@/components/map/TacticalMap";
 import { MOCK_INCIDENTS } from "@/data/mock-incidents";
 import { generateResourceSuggestions } from "@/lib/resource-optimizer";
@@ -13,8 +14,12 @@ import { Message, ResourceAllocationSuggestion } from "@/types";
 import {
   listenForIncomingCalls,
   listenForLocationUpdates,
+  listenForAIAssessment,
+  updateCallPhase,
+  endCall,
   CallerLocation,
 } from "@/lib/firebase/signaling";
+import { AIAssessment, CallPhase } from "@/types/ai-agent";
 
 export default function DashboardPage() {
   // Use the first mock incident as the active incident
@@ -38,12 +43,18 @@ export default function DashboardPage() {
     null,
   );
   const [activeCallId, setActiveCallId] = useState<string | null>(null);
+  const [aiAssessment, setAIAssessment] = useState<AIAssessment | null>(null);
+  const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
+  const [showIncomingAlert, setShowIncomingAlert] = useState(false);
 
   // Listen for incoming calls and location updates
   useEffect(() => {
     const unsubscribeCalls = listenForIncomingCalls((callId, callData) => {
-      console.log("Incoming call:", callId, callData);
       setActiveCallId(callId);
+
+      // Show alert immediately for demo purposes
+      setShowIncomingAlert(true);
+      playNotificationSound();
 
       // If call already has location, set it
       if (callData.currentLocation) {
@@ -56,6 +67,21 @@ export default function DashboardPage() {
     };
   }, []);
 
+  // Listen for AI assessment on active call
+  useEffect(() => {
+    if (!activeCallId) return;
+
+    const unsubscribe = listenForAIAssessment(
+      activeCallId,
+      (assessment, phase) => {
+        setAIAssessment(assessment);
+        setCallPhase(phase);
+      },
+    );
+
+    return () => unsubscribe();
+  }, [activeCallId]);
+
   // Listen for location updates on active call
   useEffect(() => {
     if (!activeCallId) return;
@@ -63,11 +89,7 @@ export default function DashboardPage() {
     const unsubscribeLocation = listenForLocationUpdates(
       activeCallId,
       (location) => {
-        console.log("Location update:", location);
         setCallerLocation(location);
-
-        // Optionally update incident location
-        // This would require updating the incident state
       },
     );
 
@@ -97,6 +119,81 @@ export default function DashboardPage() {
     setMessages((prev) => [...prev, newMessage]);
   };
 
+  // Accept incoming call
+  const handleAcceptCall = async () => {
+    if (!activeCallId) return;
+
+    try {
+      // Update call phase to dispatcher-active
+      await updateCallPhase(activeCallId, "dispatcher-active");
+
+      // Hide alert
+      setShowIncomingAlert(false);
+    } catch (error) {
+      console.error("Error accepting call:", error);
+    }
+  };
+
+  // Reject incoming call
+  const handleRejectCall = async () => {
+    if (!activeCallId) return;
+
+    try {
+      // End the call
+      await endCall(activeCallId);
+
+      // Hide alert and reset state
+      setShowIncomingAlert(false);
+      setActiveCallId(null);
+      setAIAssessment(null);
+      setCallerLocation(null);
+    } catch (error) {
+      console.error("Error rejecting call:", error);
+    }
+  };
+
+  // Handle call end from LiveFeed
+  const handleCallEnd = async () => {
+    if (!activeCallId) return;
+
+    try {
+      await endCall(activeCallId);
+      setActiveCallId(null);
+      setAIAssessment(null);
+      setCallerLocation(null);
+      setCallPhase("ai-screening");
+    } catch (error) {
+      console.error("Error ending call:", error);
+    }
+  };
+
+  // Play notification sound
+  const playNotificationSound = () => {
+    // Create an audio context and play a simple beep
+    try {
+      const audioContext = new AudioContext();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 800;
+      oscillator.type = "sine";
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.5,
+      );
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.log("Could not play notification sound:", error);
+    }
+  };
+
   // Filter out dispatched and denied resources from suggestions
   const availableSuggestions = suggestions.filter(
     (s) =>
@@ -115,6 +212,31 @@ export default function DashboardPage() {
           callerLocation={callerLocation}
         />
       </div>
+
+      {/* Incoming Call Alert Overlay */}
+      {showIncomingAlert && activeCallId && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="max-w-2xl w-full mx-4">
+            <IncomingCallAlert
+              callId={activeCallId}
+              assessment={aiAssessment}
+              location={
+                callerLocation
+                  ? {
+                      address: callerLocation.address,
+                      coords: {
+                        latitude: callerLocation.coords.latitude,
+                        longitude: callerLocation.coords.longitude,
+                      },
+                    }
+                  : undefined
+              }
+              onAccept={handleAcceptCall}
+              onReject={handleRejectCall}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Quadrant Grid Overlay */}
       <div className="absolute inset-0 z-10 grid grid-cols-8 grid-rows-2 gap-4 p-4 pointer-events-none">
@@ -141,6 +263,10 @@ export default function DashboardPage() {
           <LiveFeed
             videoUrl={activeIncident.videoUrl}
             transcript={activeIncident.transcript}
+            activeCallId={
+              callPhase === "dispatcher-active" ? activeCallId : null
+            }
+            onCallEnd={handleCallEnd}
           />
         </div>
 

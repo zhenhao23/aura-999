@@ -2,7 +2,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { GeminiLiveClient } from "@/lib/gemini/live-client";
 import {
   PHASE_1_SYSTEM_PROMPT,
+  PHASE_2_SYSTEM_PROMPT,
   assessUrgencyTool,
+  updateIncidentFieldTool,
+  detectVisualHazardTool,
 } from "@/lib/gemini/ai-prompts";
 import {
   saveAIAssessment,
@@ -57,10 +60,11 @@ export function useGeminiAIAgent({
     });
 
     client.on("audio", (audioData) => {
-      // Only play AI audio in Phase 1 (screening)
+      // Only play AI audio in Phase 1 (screening), muted in shadow mode
       if (currentPhase === "ai-screening") {
         playAudio(audioData);
       }
+      // In shadow mode (dispatcher-active), AI output is muted
     });
 
     client.on("transcript", (text, isFinal) => {
@@ -107,6 +111,30 @@ export function useGeminiAIAgent({
     [callId],
   );
 
+  // Enter shadow mode - AI observes silently
+  const enterShadowMode = useCallback(() => {
+    if (!clientRef.current?.isConnected()) return;
+
+    console.log("🕵️ AI entering shadow mode - observing silently...");
+
+    // Update system instruction to Phase 2 (observation mode)
+    clientRef.current.updateConfig({
+      systemInstruction: {
+        parts: [{ text: PHASE_2_SYSTEM_PROMPT }],
+      },
+      tools: [
+        {
+          functionDeclarations: [
+            updateIncidentFieldTool,
+            detectVisualHazardTool,
+          ],
+        },
+      ],
+    });
+
+    setCurrentPhase("dispatcher-active");
+  }, []);
+
   // Disconnect from Gemini
   const disconnect = useCallback(() => {
     if (clientRef.current) {
@@ -135,6 +163,7 @@ export function useGeminiAIAgent({
     const functionCalls = toolCall.functionCalls || [];
 
     for (const fc of functionCalls) {
+      // Phase 1: Urgency assessment and transfer decision
       if (fc.name === "assess_urgency_and_transfer") {
         const args = fc.args as any;
 
@@ -155,6 +184,64 @@ export function useGeminiAIAgent({
         }
 
         // Send response back to AI
+        if (clientRef.current) {
+          clientRef.current.sendToolResponse({
+            functionResponses: [
+              {
+                id: fc.id,
+                name: fc.name,
+                response: { output: { success: true } },
+              },
+            ],
+          });
+        }
+      }
+
+      // Phase 2 (Shadow Mode): Update incident field
+      else if (fc.name === "update_incident_field") {
+        const args = fc.args as any;
+        console.log(
+          `🔄 AI updating ${args.field}: ${args.value} (confidence: ${args.confidence})`,
+        );
+
+        await updateIncidentField(callId, {
+          field: args.field,
+          value: args.value,
+          confidence: args.confidence,
+          source: args.source || "ai-observation",
+          timestamp: new Date().toISOString(),
+        });
+
+        // Send response
+        if (clientRef.current) {
+          clientRef.current.sendToolResponse({
+            functionResponses: [
+              {
+                id: fc.id,
+                name: fc.name,
+                response: { output: { success: true } },
+              },
+            ],
+          });
+        }
+      }
+
+      // Phase 2 (Shadow Mode): Visual hazard detection
+      else if (fc.name === "detect_visual_hazard") {
+        const args = fc.args as any;
+        console.log(
+          `⚠️ AI detected hazard: ${args.hazard_type} (${args.severity})`,
+        );
+
+        await addVisualHazard(callId, {
+          hazardType: args.hazard_type,
+          severity: args.severity,
+          locationInFrame: args.location_in_frame || "unknown",
+          description: args.description,
+          confidence: args.confidence,
+        });
+
+        // Send response
         if (clientRef.current) {
           clientRef.current.sendToolResponse({
             functionResponses: [
@@ -233,6 +320,7 @@ export function useGeminiAIAgent({
     aiTranscript,
     connect,
     disconnect,
+    enterShadowMode,
     sendAudio,
     sendVideo,
   };

@@ -78,6 +78,7 @@ export default function CallerPage() {
     isConnected: aiConnected,
     connect: connectAI,
     disconnect: disconnectAI,
+    enterShadowMode,
     sendAudio: sendAudioToAI,
     sendVideo: sendVideoToAI,
   } = useGeminiAIAgent({
@@ -382,6 +383,10 @@ export default function CallerPage() {
         // Dispatcher accepted - start WebRTC connection
         console.log("🚀 Starting WebRTC connection to dispatcher...");
         startWebRTCConnection();
+
+        // Enter AI shadow mode - AI continues observing silently
+        console.log("🕵️ AI entering shadow mode...");
+        enterShadowMode();
       }
     });
 

@@ -5,6 +5,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { IntelligentSummary } from "@/components/dashboard/IntelligentSummary";
 import { ResourceAllocation } from "@/components/dashboard/ResourceAllocation";
 import { LiveFeed } from "@/components/dashboard/LiveFeed";
+import { LiveIncidentSummary } from "@/components/dashboard/LiveIncidentSummary";
 import { UniversalComms } from "@/components/dashboard/UniversalComms";
 import { IncomingCallAlert } from "@/components/dashboard/IncomingCallAlert";
 import { TacticalMap } from "@/components/map/TacticalMap";
@@ -247,7 +248,14 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="col-span-3 pointer-events-none"></div>
+        {/* AI Shadow Mode - Live Incident Summary */}
+        <div className="col-span-2 overflow-auto pointer-events-auto">
+          <LiveIncidentSummary
+            callId={callPhase === "dispatcher-active" ? activeCallId : null}
+          />
+        </div>
+
+        <div className="col-span-1 pointer-events-none"></div>
 
         <div
           className={`col-span-3 overflow-auto pointer-events-auto ${availableSuggestions.length === 0 ? "invisible" : ""}`}

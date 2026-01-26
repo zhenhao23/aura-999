@@ -294,27 +294,6 @@ export async function saveAIAssessment(
   );
 }
 
-// Update incident field (Phase 2 - shadow mode)
-export async function updateIncidentField(
-  callId: string,
-  field: string,
-  value: any,
-  confidence: number,
-): Promise<void> {
-  const callRef = doc(db, "calls", callId);
-  await setDoc(
-    callRef,
-    {
-      incidentSummary: {
-        [field]: value,
-        [`${field}_confidence`]: confidence,
-        lastUpdated: serverTimestamp(),
-      },
-    },
-    { merge: true },
-  );
-}
-
 // Add visual hazard detection
 export async function addVisualHazard(
   callId: string,
@@ -353,6 +332,66 @@ export function listenForCallPhase(
     const data = snapshot.data() as CallData;
     const phase = data?.callPhase || "ai-screening";
     callback(phase);
+  });
+
+  return unsubscribe;
+}
+
+// ==================== Shadow Mode Functions ====================
+
+export interface IncidentUpdate {
+  field: string;
+  value: string;
+  confidence: number;
+  source: string;
+  timestamp: string;
+}
+
+// Update incident field (Shadow Mode)
+export async function updateIncidentField(
+  callId: string,
+  update: IncidentUpdate,
+) {
+  const updateRef = collection(db, "calls", callId, "incidentUpdates");
+  await addDoc(updateRef, {
+    ...update,
+    createdAt: serverTimestamp(),
+  });
+}
+
+// Listen for incident field updates
+export function listenForIncidentUpdates(
+  callId: string,
+  callback: (update: IncidentUpdate) => void,
+): () => void {
+  const updatesRef = collection(db, "calls", callId, "incidentUpdates");
+
+  const unsubscribe = onSnapshot(updatesRef, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        const data = change.doc.data() as IncidentUpdate;
+        callback(data);
+      }
+    });
+  });
+
+  return unsubscribe;
+}
+
+// Listen for visual hazards
+export function listenForVisualHazards(
+  callId: string,
+  callback: (hazard: VisualHazard) => void,
+): () => void {
+  const hazardsRef = collection(db, "calls", callId, "visualHazards");
+
+  const unsubscribe = onSnapshot(hazardsRef, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      if (change.type === "added") {
+        const data = change.doc.data() as VisualHazard;
+        callback(data);
+      }
+    });
   });
 
   return unsubscribe;

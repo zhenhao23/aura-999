@@ -18,7 +18,8 @@ export interface VisualHazard {
   hazardType: string;
   severity: "low" | "medium" | "high" | "critical";
   locationInFrame?: string;
-  timestamp: number;
+  description: string;
+  timestamp: string;
   confidence: number;
 }
 

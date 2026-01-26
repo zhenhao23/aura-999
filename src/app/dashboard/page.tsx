@@ -9,6 +9,10 @@ import { LiveIncidentSummary } from "@/components/dashboard/LiveIncidentSummary"
 import { UniversalComms } from "@/components/dashboard/UniversalComms";
 import { IncomingCallAlert } from "@/components/dashboard/IncomingCallAlert";
 import { TacticalMap } from "@/components/map/TacticalMap";
+import {
+  translateDispatcherMessage,
+  type SupportedLanguage,
+} from "@/lib/gemini/translator";
 import { MOCK_INCIDENTS } from "@/data/mock-incidents";
 import { generateResourceSuggestions } from "@/lib/resource-optimizer";
 import { Message, ResourceAllocationSuggestion } from "@/types";
@@ -47,6 +51,8 @@ export default function DashboardPage() {
   const [aiAssessment, setAIAssessment] = useState<AIAssessment | null>(null);
   const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
+  const [callerLanguage, setCallerLanguage] =
+    useState<SupportedLanguage>("Malay");
 
   // Listen for incoming calls and location updates
   useEffect(() => {
@@ -77,6 +83,11 @@ export default function DashboardPage() {
       (assessment, phase) => {
         setAIAssessment(assessment);
         setCallPhase(phase);
+
+        // Update caller language from AI assessment
+        if (assessment?.detectedLanguage) {
+          setCallerLanguage(assessment.detectedLanguage as SupportedLanguage);
+        }
       },
     );
 
@@ -109,12 +120,18 @@ export default function DashboardPage() {
     setDeniedResources((prev) => [...prev, resourceId]);
   };
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
+    // Translate dispatcher's English message to caller's language
+    const translation = await translateDispatcherMessage(
+      content,
+      callerLanguage,
+    );
+
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       sender: "dispatcher",
       content,
-      translatedContent: translateToMalay(content), // Mock translation
+      translatedContent: translation.translatedText,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, newMessage]);
@@ -284,21 +301,10 @@ export default function DashboardPage() {
           <UniversalComms
             messages={messages}
             onSendMessage={handleSendMessage}
-            callerLanguage={activeIncident.callerInfo?.language}
+            callerLanguage={callerLanguage}
           />
         </div>
       </div>
     </div>
   );
-}
-
-// Mock translation function
-function translateToMalay(text: string): string {
-  const translations: Record<string, string> = {
-    "Help is on the way": "Bantuan sedang dalam perjalanan",
-    "Stay calm": "Tetap tenang",
-    "What is your location?": "Di mana lokasi anda?",
-    "Are you safe?": "Adakah anda selamat?",
-  };
-  return translations[text] || `[BM: ${text}]`;
 }

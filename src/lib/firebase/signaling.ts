@@ -10,6 +10,7 @@ import {
   GeoPoint,
 } from "firebase/firestore";
 import { db } from "./config";
+import { AIAssessment, CallPhase, VisualHazard } from "@/types/ai-agent";
 
 export interface CallerLocation {
   coords: GeoPoint;
@@ -34,6 +35,11 @@ export interface CallData {
     location?: string;
     callerInfo?: string;
   };
+  // AI Agent fields
+  callPhase?: CallPhase;
+  aiAssessment?: AIAssessment;
+  callerLanguage?: string;
+  transferTime?: Timestamp;
 }
 
 export interface IceCandidate {
@@ -235,4 +241,101 @@ export async function endCall(callId: string): Promise<void> {
     },
     { merge: true },
   );
+}
+
+// Update call phase (AI screening -> dispatcher active)
+export async function updateCallPhase(
+  callId: string,
+  phase: CallPhase,
+): Promise<void> {
+  const callRef = doc(db, "calls", callId);
+  const updates: any = { callPhase: phase };
+
+  if (phase === "dispatcher-active") {
+    updates.transferTime = serverTimestamp();
+  }
+
+  await setDoc(callRef, updates, { merge: true });
+}
+
+// Save AI assessment (Phase 1 completion)
+export async function saveAIAssessment(
+  callId: string,
+  assessment: Omit<AIAssessment, "completedAt">,
+): Promise<void> {
+  const callRef = doc(db, "calls", callId);
+  await setDoc(
+    callRef,
+    {
+      aiAssessment: {
+        ...assessment,
+        completedAt: serverTimestamp(),
+      },
+    },
+    { merge: true },
+  );
+}
+
+// Update incident field (Phase 2 - shadow mode)
+export async function updateIncidentField(
+  callId: string,
+  field: string,
+  value: any,
+  confidence: number,
+): Promise<void> {
+  const callRef = doc(db, "calls", callId);
+  await setDoc(
+    callRef,
+    {
+      incidentSummary: {
+        [field]: value,
+        [`${field}_confidence`]: confidence,
+        lastUpdated: serverTimestamp(),
+      },
+    },
+    { merge: true },
+  );
+}
+
+// Add visual hazard detection
+export async function addVisualHazard(
+  callId: string,
+  hazard: Omit<VisualHazard, "timestamp">,
+): Promise<void> {
+  const hazardsRef = collection(db, "calls", callId, "visualHazards");
+  await addDoc(hazardsRef, {
+    ...hazard,
+    timestamp: serverTimestamp(),
+  });
+}
+
+// Listen for AI assessment updates
+export function listenForAIAssessment(
+  callId: string,
+  callback: (assessment: AIAssessment | null, phase: CallPhase) => void,
+): () => void {
+  const callRef = doc(db, "calls", callId);
+
+  const unsubscribe = onSnapshot(callRef, (snapshot) => {
+    const data = snapshot.data() as CallData;
+    callback(data?.aiAssessment || null, data?.callPhase || "ai-screening");
+  });
+
+  return unsubscribe;
+}
+
+// Listen for call phase changes (for caller to know when dispatcher accepts)
+export function listenForCallPhase(
+  callId: string,
+  callback: (phase: CallPhase) => void,
+): () => void {
+  const callRef = doc(db, "calls", callId);
+
+  const unsubscribe = onSnapshot(callRef, (snapshot) => {
+    const data = snapshot.data() as CallData;
+    const phase = data?.callPhase || "ai-screening";
+    callback(phase);
+  });
+
+  return unsubscribe;
 }

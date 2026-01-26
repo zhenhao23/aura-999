@@ -11,6 +11,7 @@ import {
   endCall,
   updateCallerLocation,
   addLocationToHistory,
+  listenForCallPhase,
 } from "@/lib/firebase/signaling";
 import { GeoPoint } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,9 @@ import {
   X,
   Send,
 } from "lucide-react";
+import { useGeminiAIAgent } from "@/hooks/use-gemini-ai-agent";
+import { SimpleAudioRecorder } from "@/lib/audio/simple-recorder";
+import { CallPhase } from "@/types/ai-agent";
 
 export default function CallerPage() {
   const [isCallActive, setIsCallActive] = useState(false);
@@ -52,6 +56,7 @@ export default function CallerPage() {
     lng: number;
     accuracy: number;
   } | null>(null);
+  const [currentPhase, setCurrentPhase] = useState<CallPhase>("ai-screening");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -63,6 +68,28 @@ export default function CallerPage() {
   const watchIdRef = useRef<number | null>(null);
   const lastLocationUpdateRef = useRef<number>(0);
   const hasSetRemoteDescriptionRef = useRef<boolean>(false);
+  const audioRecorderRef = useRef<SimpleAudioRecorder | null>(null);
+  const videoIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // AI Agent hook
+  const {
+    isConnected: aiConnected,
+    connect: connectAI,
+    disconnect: disconnectAI,
+    sendAudio: sendAudioToAI,
+    sendVideo: sendVideoToAI,
+  } = useGeminiAIAgent({
+    callId,
+    onTransferRequested: handleDispatcherHandoff,
+    enabled: currentPhase === "ai-screening",
+  });
+
+  // Handler for when AI requests transfer to dispatcher
+  async function handleDispatcherHandoff() {
+    console.log("🔄 AI requesting transfer to dispatcher...");
+    setCurrentPhase("transferring");
+    // Dispatcher will accept from their dashboard, we just wait
+  }
 
   // Reverse geocode coordinates to address
   const reverseGeocode = async (
@@ -203,11 +230,78 @@ export default function CallerPage() {
         videoRef.current.srcObject = stream;
       }
 
+      // Create call in Firebase
+      const offer = { type: "offer" as const, sdp: "" }; // Placeholder, real WebRTC comes later
+      const newCallId = await createCall(offer);
+      setCallId(newCallId);
+      callIdRef.current = newCallId;
+      setIsCallActive(true);
+      setCurrentPhase("ai-screening");
+
+      // Start location tracking
+      startLocationTracking(newCallId);
+
+      // Connect to AI agent
+      console.log("🤖 Connecting to AI agent...");
+      await connectAI(newCallId);
+
+      // Start audio recording and send to AI
+      const recorder = new SimpleAudioRecorder();
+      await recorder.start((base64Audio) => {
+        sendAudioToAI(base64Audio);
+      });
+      audioRecorderRef.current = recorder;
+      console.log("🎤 Audio recorder started");
+
+      // Send video frames every 2 seconds
+      const interval = setInterval(() => {
+        captureAndSendVideoFrame();
+      }, 2000);
+      videoIntervalRef.current = interval;
+    } catch (err) {
+      console.error("Error starting call:", err);
+      setError(err instanceof Error ? err.message : "Failed to start call");
+    }
+  };
+
+  // Capture video frame and send to AI
+  const captureAndSendVideoFrame = () => {
+    if (!videoRef.current || !callId) return;
+
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(",")[1];
+          sendVideoToAI(base64);
+        };
+        reader.readAsDataURL(blob);
+      },
+      "image/jpeg",
+      0.8,
+    );
+  };
+
+  // Start WebRTC connection to dispatcher (called when dispatcher accepts)
+  const startWebRTCConnection = async () => {
+    if (!streamRef.current || !callId) return;
+
+    try {
+      console.log("📞 Starting WebRTC connection to dispatcher...");
+
       // Create peer connection
       const pc = new WebRTCPeerConnection({
         onIceCandidate: (candidate) => {
           console.log("Caller ICE candidate:", candidate);
-          // Store candidate if callId not yet available
           if (callIdRef.current) {
             addCallerCandidate(callIdRef.current, candidate.toJSON());
           } else {
@@ -226,29 +320,18 @@ export default function CallerPage() {
       peerConnectionRef.current = pc;
 
       // Add local stream to peer connection
-      pc.addStream(stream);
+      pc.addStream(streamRef.current);
 
       // Create offer
       const offer = await pc.createOffer();
 
-      // Save offer to Firebase and get callId
-      const newCallId = await createCall(offer);
-      setCallId(newCallId);
-      callIdRef.current = newCallId;
-      setIsCallActive(true);
-      hasSetRemoteDescriptionRef.current = false; // Reset flag for new call
-
-      // Send any pending ICE candidates
-      pendingCandidatesRef.current.forEach((candidate) => {
-        addCallerCandidate(newCallId, candidate);
-      });
-      pendingCandidatesRef.current = [];
+      // Update call with real offer (overwrite AI placeholder)
+      // This would need a new Firebase function - for now we'll work with existing structure
 
       // Listen for answer from dispatcher
-      const unsubAnswer = listenForAnswer(newCallId, async (answer) => {
+      const unsubAnswer = listenForAnswer(callId, async (answer) => {
         console.log("Received answer from dispatcher");
 
-        // Only set remote description once
         if (hasSetRemoteDescriptionRef.current) {
           console.log("Remote description already set, skipping");
           return;
@@ -265,7 +348,7 @@ export default function CallerPage() {
 
       // Listen for dispatcher ICE candidates
       const unsubCandidates = listenForDispatcherCandidates(
-        newCallId,
+        callId,
         async (candidate) => {
           console.log("Received dispatcher ICE candidate");
           try {
@@ -278,14 +361,28 @@ export default function CallerPage() {
 
       // Store unsubscribers
       unsubscribersRef.current = [unsubAnswer, unsubCandidates];
-
-      // Start location tracking
-      startLocationTracking(newCallId);
     } catch (err) {
-      console.error("Error starting call:", err);
-      setError(err instanceof Error ? err.message : "Failed to start call");
+      console.error("Error starting WebRTC:", err);
     }
   };
+
+  // Listen for phase changes from Firebase
+  useEffect(() => {
+    if (!callId) return;
+
+    const unsubscribe = listenForCallPhase(callId, (phase) => {
+      console.log(`📡 Call phase changed to: ${phase}`);
+      setCurrentPhase(phase);
+
+      if (phase === "dispatcher-active") {
+        // Dispatcher accepted - start WebRTC connection
+        console.log("👨‍🚒 Dispatcher accepted call!");
+        startWebRTCConnection();
+      }
+    });
+
+    return () => unsubscribe();
+  }, [callId]);
 
   // Toggle microphone
   const toggleMute = () => {
@@ -380,6 +477,21 @@ export default function CallerPage() {
   // End call
   const handleEndCall = async () => {
     try {
+      // Stop video frame capture
+      if (videoIntervalRef.current) {
+        clearInterval(videoIntervalRef.current);
+        videoIntervalRef.current = null;
+      }
+
+      // Stop audio recorder
+      if (audioRecorderRef.current) {
+        audioRecorderRef.current.stop();
+        audioRecorderRef.current = null;
+      }
+
+      // Disconnect AI
+      disconnectAI();
+
       // Stop location tracking
       stopLocationTracking();
 
@@ -409,6 +521,7 @@ export default function CallerPage() {
       setCallId(null);
       setConnectionState("new");
       setIsMuted(false);
+      setCurrentPhase("ai-screening");
       hasSetRemoteDescriptionRef.current = false;
     } catch (err) {
       console.error("Error ending call:", err);
@@ -418,6 +531,19 @@ export default function CallerPage() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Stop video frame capture
+      if (videoIntervalRef.current) {
+        clearInterval(videoIntervalRef.current);
+      }
+
+      // Stop audio recorder
+      if (audioRecorderRef.current) {
+        audioRecorderRef.current.stop();
+      }
+
+      // Disconnect AI
+      disconnectAI();
+
       // Stop location tracking
       stopLocationTracking();
 
@@ -434,9 +560,16 @@ export default function CallerPage() {
   }, []);
 
   const getConnectionBadge = () => {
+    if (currentPhase === "ai-screening" && aiConnected) {
+      return <Badge className="bg-purple-600">🤖 AI Assistant</Badge>;
+    }
+    if (currentPhase === "transferring") {
+      return <Badge className="bg-yellow-600">⏳ Transferring...</Badge>;
+    }
+
     switch (connectionState) {
       case "connected":
-        return <Badge className="bg-green-600">Connected</Badge>;
+        return <Badge className="bg-green-600">👨‍🚒 Dispatcher Connected</Badge>;
       case "connecting":
         return <Badge className="bg-yellow-600">Connecting...</Badge>;
       case "disconnected":

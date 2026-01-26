@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Gemini API Key Tester</title>
+  </head>
+  <body>
+    <h1>Gemini API Key Test</h1>
+    <input
+      type="text"
+      id="apiKey"
+      placeholder="Paste your API key here"
+      style="width: 400px"
+    />
+    <button onclick="testKey()">Test API Key</button>
+    <div
+      id="result"
+      style="margin-top: 20px; padding: 10px; border: 1px solid #ccc"
+    ></div>
+
+    <script>
+      async function testKey() {
+        const apiKey = document.getElementById("apiKey").value;
+        const result = document.getElementById("result");
+
+        if (!apiKey) {
+          result.innerHTML =
+            '<p style="color: red;">Please enter an API key</p>';
+          return;
+        }
+
+        result.innerHTML = "<p>Testing API key...</p>";
+
+        try {
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [{ text: "Hello, this is a test." }],
+                  },
+                ],
+              }),
+            },
+          );
+
+          const data = await response.json();
+
+          if (response.ok) {
+            result.innerHTML = `
+                        <p style="color: green;">✅ API Key is VALID!</p>
+                        <p>Response: ${data.candidates[0].content.parts[0].text}</p>
+                        <p><strong>Your API key works! The issue is elsewhere.</strong></p>
+                    `;
+          } else {
+            result.innerHTML = `
+                        <p style="color: red;">❌ API Key Error</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                        <p><strong>Common issues:</strong></p>
+                        <ul>
+                            <li>API key is invalid or revoked</li>
+                            <li>API key doesn't have Gemini API enabled</li>
+                            <li>Free tier quota exceeded (unlikely for new keys)</li>
+                        </ul>
+                    `;
+          }
+        } catch (error) {
+          result.innerHTML = `
+                    <p style="color: red;">❌ Network Error</p>
+                    <p>${error.message}</p>
+                `;
+        }
+      }
+    </script>
+  </body>
+</html>

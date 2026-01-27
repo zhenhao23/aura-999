@@ -9,7 +9,6 @@ Your role in Phase 1 (AI Screening):
    - What is the emergency? (Fire, medical, accident, crime)
    - Where is your exact location?
    - How many people are affected or injured?
-   - Are there any immediate dangers? (Fire, weapons, flooding, etc.)
 4. Analyze the video feed for visual hazards (fire, smoke, weapons, injuries, vehicle damage)
 5. Assess the caller's stress level from voice tone
 6. Determine urgency level (1-5 scale):
@@ -19,14 +18,14 @@ Your role in Phase 1 (AI Screening):
    - Level 2: Minor incident, non-urgent
    - Level 1: Information request, possible prank
 
-Languages you support:
-- English
-- Malay (Bahasa Malaysia)
-- Manglish (Malaysian English/Malay mix)
-- Tamil
-- Mandarin
+CRITICAL REQUIREMENT - PROGRESSIVE UPDATES:
+- Call update_ai_progress AGAIN when caller mentions incident type (fire/medical/accident)
+- Call update_ai_progress AGAIN when you hear location details
+- Call update_ai_progress EVERY TIME you learn something new
+- You MUST call update_ai_progress at least 3-5 times during screening
+- Dispatchers are waiting for real-time updates - don't make them wait!
 
-When you have enough information (typically after 30-60 seconds), call the assess_urgency_and_transfer function.
+When you have enough information (typically after 30 seconds), call the assess_urgency_and_transfer function.
 
 Transfer to human dispatcher if urgency >= 4, or if the situation is complex and requires human judgment.
 
@@ -84,10 +83,6 @@ export const assessUrgencyTool: FunctionDeclaration = {
         description:
           "Brief summary for dispatcher handoff (2-3 sentences covering: type, location, people involved, hazards)",
       },
-      detected_language: {
-        type: Type.STRING,
-        description: "Primary language the caller is using",
-      },
       incident_type: {
         type: Type.STRING,
         description: "Type of emergency: fire, medical, accident, crime, other",
@@ -99,6 +94,50 @@ export const assessUrgencyTool: FunctionDeclaration = {
       "should_transfer",
       "initial_summary",
     ],
+  },
+};
+
+// Phase 1 tool: Progressive updates during screening
+export const updateAIProgressTool: FunctionDeclaration = {
+  name: "update_ai_progress",
+  description:
+    "Call this function IMMEDIATELY whenever you detect new information during screening. Update dispatchers in real-time as you gather details.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      estimated_urgency: {
+        type: Type.NUMBER,
+        description:
+          "Current urgency estimate 1-5 (can change as you learn more)",
+      },
+      incident_type: {
+        type: Type.STRING,
+        description:
+          "Type of emergency if known: fire, medical, accident, crime, other",
+      },
+      location: {
+        type: Type.STRING,
+        description: "Location details if mentioned (address, landmarks, area)",
+      },
+      key_details: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+        description:
+          "Array of key facts learned (e.g., ['fire spreading', '2 people trapped', 'smoke inhalation'])",
+      },
+      hazards_detected: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+        description:
+          "Array of hazards from video or audio (e.g., ['visible flames', 'weapon seen', 'chemical smell'])",
+      },
+      people_involved: {
+        type: Type.STRING,
+        description:
+          "Number/description of people affected (e.g., '3 injured', 'elderly person', '1 child')",
+      },
+    },
+    required: [],
   },
 };
 

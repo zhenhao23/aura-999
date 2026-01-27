@@ -3,12 +3,20 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AIAssessment } from "@/types/ai-agent";
-import { Phone, PhoneOff, MapPin, AlertTriangle, Clock } from "lucide-react";
+import { AIAssessment, AIProgress } from "@/types/ai-agent";
+import {
+  Phone,
+  PhoneOff,
+  MapPin,
+  AlertTriangle,
+  Clock,
+  Loader2,
+} from "lucide-react";
 
 interface IncomingCallAlertProps {
   callId: string;
   assessment: AIAssessment | null;
+  progress?: AIProgress | null;
   location?: {
     address?: string;
     coords?: { latitude: number; longitude: number };
@@ -20,6 +28,7 @@ interface IncomingCallAlertProps {
 export function IncomingCallAlert({
   callId,
   assessment,
+  progress,
   location,
   onAccept,
   onReject,
@@ -37,12 +46,24 @@ export function IncomingCallAlert({
     return "LOW";
   };
 
-  // Use assessment data if available, otherwise show defaults
-  const urgencyLevel = assessment?.urgencyLevel || 3;
-  const summary =
-    assessment?.initialSummary ||
-    "Emergency call in progress. AI assessment pending...";
+  // Use assessment data if available, otherwise use progress data or defaults
+  const urgencyLevel =
+    assessment?.urgencyLevel || progress?.estimatedUrgency || 3;
+  const summary = assessment?.initialSummary || generateProgressSummary();
   const reasoning = assessment?.reasoning;
+
+  function generateProgressSummary(): string {
+    if (!progress)
+      return "Emergency call in progress. AI assessment pending...";
+
+    const parts: string[] = [];
+    if (progress.incidentType) parts.push(`Type: ${progress.incidentType}`);
+    if (progress.location) parts.push(`Location: ${progress.location}`);
+    if (progress.peopleInvolved) parts.push(progress.peopleInvolved);
+
+    if (parts.length === 0) return "🤖 AI gathering information...";
+    return parts.join(" • ");
+  }
 
   return (
     <Card className="bg-gradient-to-br from-red-950/95 to-red-900/95 border-red-500 border-2 p-6 shadow-2xl animate-pulse-slow backdrop-blur-md">
@@ -78,14 +99,50 @@ export function IncomingCallAlert({
           <div className="flex items-start gap-2 mb-2">
             <span className="text-2xl">🤖</span>
             <div className="flex-1">
-              <p className="text-xs text-red-300 font-semibold mb-1">
-                {assessment ? "AI ASSESSMENT" : "AI STATUS"}
+              <p className="text-xs text-red-300 font-semibold mb-1 flex items-center gap-2">
+                {assessment
+                  ? "AI ASSESSMENT COMPLETE"
+                  : "AI SCREENING IN PROGRESS"}
+                {!assessment && <Loader2 className="w-3 h-3 animate-spin" />}
               </p>
               <p className="text-white font-medium leading-relaxed">
                 {summary}
               </p>
             </div>
           </div>
+
+          {/* Progressive Updates Display */}
+          {progress && !assessment && (
+            <div className="mt-3 space-y-2 border-t border-red-500/20 pt-3">
+              <p className="text-xs text-red-300/80 font-semibold">
+                LIVE UPDATES:
+              </p>
+
+              {progress.keyDetails && progress.keyDetails.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {progress.keyDetails.map((detail, idx) => (
+                    <Badge key={idx} className="bg-blue-600/50 text-xs">
+                      {detail}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {progress.hazardsDetected &&
+                progress.hazardsDetected.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-3 h-3 text-orange-400 mt-0.5" />
+                    <div className="flex flex-wrap gap-1">
+                      {progress.hazardsDetected.map((hazard, idx) => (
+                        <Badge key={idx} className="bg-orange-600/50 text-xs">
+                          {hazard}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
         </div>
 
         {/* Reasoning */}

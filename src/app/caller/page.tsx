@@ -13,6 +13,7 @@ import {
   updateCallerLocation,
   addLocationToHistory,
   listenForCallPhase,
+  updateLocationPermission,
 } from "@/lib/firebase/signaling";
 import { GeoPoint } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
@@ -116,6 +117,7 @@ export default function CallerPage() {
     if (!navigator.geolocation) {
       console.error("Geolocation not supported");
       setLocationPermission("denied");
+      updateLocationPermission(callId, false).catch(console.error);
       return;
     }
 
@@ -176,6 +178,7 @@ export default function CallerPage() {
       // Don't set permission to denied for timeout errors - GPS might work later
       if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
         setLocationPermission("denied");
+        updateLocationPermission(callId, false).catch(console.error);
         setError(
           "Location permission denied. Emergency responders cannot track your location.",
         );

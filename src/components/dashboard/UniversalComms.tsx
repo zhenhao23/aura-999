@@ -63,12 +63,12 @@ export function UniversalComms({
                         : "bg-muted"
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm">{message.content}</p>{" "}
                     {message.translatedContent && (
                       <p className="text-xs opacity-70 mt-1 italic">
                         {message.translatedContent}
                       </p>
-                    )}
+                    )}{" "}
                   </div>
                 </div>
               ))}

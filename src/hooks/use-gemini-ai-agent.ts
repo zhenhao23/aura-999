@@ -4,6 +4,7 @@ import {
   PHASE_1_SYSTEM_PROMPT,
   PHASE_2_SYSTEM_PROMPT,
   assessUrgencyTool,
+  updateAIProgressTool,
   updateIncidentFieldTool,
   detectVisualHazardTool,
 } from "@/lib/gemini/ai-prompts";
@@ -12,6 +13,7 @@ import {
   updateCallPhase,
   updateIncidentField,
   addVisualHazard,
+  updateAIProgress,
 } from "@/lib/firebase/signaling";
 import { CallPhase } from "@/types/ai-agent";
 import { Modality } from "@google/genai";
@@ -31,9 +33,15 @@ export function useGeminiAIAgent({
   const [currentPhase, setCurrentPhase] = useState<CallPhase>("ai-screening");
   const [aiTranscript, setAITranscript] = useState<string>("");
   const clientRef = useRef<GeminiLiveClient | null>(null);
+  const callIdRef = useRef<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<AudioBuffer[]>([]);
   const isPlayingRef = useRef(false);
+
+  // Keep callIdRef in sync with callId prop
+  useEffect(() => {
+    callIdRef.current = callId;
+  }, [callId]);
 
   // Initialize Gemini Live client (always, not dependent on enabled)
   useEffect(() => {
@@ -74,6 +82,7 @@ export function useGeminiAIAgent({
     });
 
     client.on("toolCall", async (toolCall) => {
+      console.log("🔧 Tool call received:", toolCall);
       await handleToolCall(toolCall);
     });
 
@@ -98,13 +107,22 @@ export function useGeminiAIAgent({
         systemInstruction: {
           parts: [{ text: PHASE_1_SYSTEM_PROMPT }],
         },
-        tools: [{ functionDeclarations: [assessUrgencyTool] }],
+        tools: [
+          { functionDeclarations: [assessUrgencyTool, updateAIProgressTool] },
+        ],
       };
 
+      console.log(
+        "🤖 Connecting to Gemini AI with tools:",
+        config.tools[0].functionDeclarations.map((t) => t.name),
+      );
       const success = await clientRef.current.connect(config);
       if (success && targetCallId) {
+        console.log("✅ AI connected successfully for call:", targetCallId);
         await updateCallPhase(targetCallId, "ai-screening");
         setCurrentPhase("ai-screening");
+      } else {
+        console.error("❌ AI connection failed");
       }
       return success;
     },
@@ -158,27 +176,69 @@ export function useGeminiAIAgent({
 
   // Handle tool calls from AI
   const handleToolCall = async (toolCall: any) => {
-    if (!callId) return;
+    const currentCallId = callIdRef.current;
+    console.log("🎯 handleToolCall called with callId:", currentCallId);
+
+    if (!currentCallId) {
+      console.error("❌ No callId available - cannot process tool call");
+      return;
+    }
 
     const functionCalls = toolCall.functionCalls || [];
+    console.log("🔍 Processing", functionCalls.length, "function calls");
 
     for (const fc of functionCalls) {
+      console.log("🔧 Processing function:", fc.name);
+
+      // Phase 1: Progressive updates during screening
+      if (fc.name === "update_ai_progress") {
+        const args = fc.args as any;
+        console.log("📊 AI progress update:", args);
+
+        try {
+          // Save progressive update to Firestore
+          await updateAIProgress(currentCallId, {
+            estimatedUrgency: args.estimated_urgency,
+            incidentType: args.incident_type,
+            location: args.location,
+            keyDetails: args.key_details,
+            hazardsDetected: args.hazards_detected,
+            peopleInvolved: args.people_involved,
+          });
+          console.log("✅ Progress saved to Firebase successfully");
+        } catch (error) {
+          console.error("❌ Failed to save progress to Firebase:", error);
+        }
+
+        // Send response back to AI
+        if (clientRef.current) {
+          clientRef.current.sendToolResponse({
+            functionResponses: [
+              {
+                id: fc.id,
+                name: fc.name,
+                response: { output: { success: true } },
+              },
+            ],
+          });
+        }
+      }
+
       // Phase 1: Urgency assessment and transfer decision
-      if (fc.name === "assess_urgency_and_transfer") {
+      else if (fc.name === "assess_urgency_and_transfer") {
         const args = fc.args as any;
 
         // Save AI assessment to Firestore
-        await saveAIAssessment(callId, {
+        await saveAIAssessment(currentCallId, {
           urgencyLevel: args.urgency_level,
           reasoning: args.reasoning,
           shouldTransfer: args.should_transfer,
           initialSummary: args.initial_summary,
-          detectedLanguage: args.detected_language,
         });
 
         // If should transfer, trigger handoff
         if (args.should_transfer) {
-          await updateCallPhase(callId, "transferring");
+          await updateCallPhase(currentCallId, "transferring");
           setCurrentPhase("transferring");
           onTransferRequested();
         }
@@ -204,7 +264,7 @@ export function useGeminiAIAgent({
           `🔄 AI updating ${args.field}: ${args.value} (confidence: ${args.confidence})`,
         );
 
-        await updateIncidentField(callId, {
+        await updateIncidentField(currentCallId, {
           field: args.field,
           value: args.value,
           confidence: args.confidence,
@@ -233,7 +293,7 @@ export function useGeminiAIAgent({
           `⚠️ AI detected hazard: ${args.hazard_type} (${args.severity})`,
         );
 
-        await addVisualHazard(callId, {
+        await addVisualHazard(currentCallId, {
           hazardType: args.hazard_type,
           severity: args.severity,
           locationInFrame: args.location_in_frame || "unknown",

@@ -10,7 +10,12 @@ import {
   GeoPoint,
 } from "firebase/firestore";
 import { db } from "./config";
-import { AIAssessment, CallPhase, VisualHazard } from "@/types/ai-agent";
+import {
+  AIAssessment,
+  AIProgress,
+  CallPhase,
+  VisualHazard,
+} from "@/types/ai-agent";
 
 export interface CallerLocation {
   coords: GeoPoint;
@@ -22,30 +27,35 @@ export interface CallerLocation {
   speed?: number; // speed in m/s
 }
 
+// Separate collection interfaces
 export interface CallData {
   id?: string;
   offer?: RTCSessionDescriptionInit;
   answer?: RTCSessionDescriptionInit;
   status: "waiting" | "connected" | "ended";
   timestamp: Timestamp;
-  currentLocation?: CallerLocation;
-  locationPermissionGranted?: boolean;
-  lastLocationUpdate?: Timestamp;
-  metadata?: {
-    location?: string;
-    callerInfo?: string;
-  };
-  // AI Agent fields
-  callPhase?: CallPhase;
+}
+
+export interface AISessionData {
+  callPhase: CallPhase;
   aiAssessment?: AIAssessment;
-  callerLanguage?: string;
+  aiProgress?: AIProgress;
   transferTime?: Timestamp;
+  createdAt: Timestamp;
+}
+
+export interface LocationData {
+  currentLocation?: CallerLocation;
+  locationPermissionGranted: boolean;
+  lastLocationUpdate?: Timestamp;
 }
 
 export interface IceCandidate {
   candidate: RTCIceCandidateInit;
   timestamp: Timestamp;
 }
+
+// ==================== WebRTC Functions ====================
 
 // Create a new call session
 export async function createCall(
@@ -62,7 +72,20 @@ export async function createCall(
   }
 
   const callRef = await addDoc(collection(db, "calls"), callData);
-  return callRef.id;
+  const callId = callRef.id;
+
+  // Initialize AI session
+  await setDoc(doc(db, "aiSessions", callId), {
+    callPhase: "ai-screening",
+    createdAt: serverTimestamp(),
+  });
+
+  // Initialize location tracking
+  await setDoc(doc(db, "callerLocations", callId), {
+    locationPermissionGranted: false,
+  });
+
+  return callId;
 }
 
 // Set offer for a call (used when WebRTC handoff starts)
@@ -207,17 +230,20 @@ export async function getCall(callId: string): Promise<CallData | null> {
   return null;
 }
 
+// ==================== Location Functions ====================
+
 // Update caller's location
 export async function updateCallerLocation(
   callId: string,
   location: CallerLocation,
 ): Promise<void> {
-  const callRef = doc(db, "calls", callId);
+  const locationRef = doc(db, "callerLocations", callId);
   await setDoc(
-    callRef,
+    locationRef,
     {
       currentLocation: location,
       lastLocationUpdate: serverTimestamp(),
+      locationPermissionGranted: true,
     },
     { merge: true },
   );
@@ -228,8 +254,28 @@ export async function addLocationToHistory(
   callId: string,
   location: CallerLocation,
 ): Promise<void> {
-  const locationRef = collection(db, "calls", callId, "locationHistory");
+  const locationRef = collection(
+    db,
+    "callerLocations",
+    callId,
+    "locationHistory",
+  );
   await addDoc(locationRef, location);
+}
+
+// Update location permission status
+export async function updateLocationPermission(
+  callId: string,
+  granted: boolean,
+): Promise<void> {
+  const locationRef = doc(db, "callerLocations", callId);
+  await setDoc(
+    locationRef,
+    {
+      locationPermissionGranted: granted,
+    },
+    { merge: true },
+  );
 }
 
 // Listen for location updates (dispatcher side)
@@ -237,10 +283,10 @@ export function listenForLocationUpdates(
   callId: string,
   callback: (location: CallerLocation) => void,
 ): () => void {
-  const callRef = doc(db, "calls", callId);
+  const locationRef = doc(db, "callerLocations", callId);
 
-  const unsubscribe = onSnapshot(callRef, (snapshot) => {
-    const data = snapshot.data() as CallData;
+  const unsubscribe = onSnapshot(locationRef, (snapshot) => {
+    const data = snapshot.data() as LocationData;
     if (data?.currentLocation) {
       callback(data.currentLocation);
     }
@@ -261,19 +307,21 @@ export async function endCall(callId: string): Promise<void> {
   );
 }
 
+// ==================== AI Functions ====================
+
 // Update call phase (AI screening -> dispatcher active)
 export async function updateCallPhase(
   callId: string,
   phase: CallPhase,
 ): Promise<void> {
-  const callRef = doc(db, "calls", callId);
+  const aiSessionRef = doc(db, "aiSessions", callId);
   const updates: any = { callPhase: phase };
 
   if (phase === "dispatcher-active") {
     updates.transferTime = serverTimestamp();
   }
 
-  await setDoc(callRef, updates, { merge: true });
+  await setDoc(aiSessionRef, updates, { merge: true });
 }
 
 // Save AI assessment (Phase 1 completion)
@@ -281,9 +329,9 @@ export async function saveAIAssessment(
   callId: string,
   assessment: Omit<AIAssessment, "completedAt">,
 ): Promise<void> {
-  const callRef = doc(db, "calls", callId);
+  const aiSessionRef = doc(db, "aiSessions", callId);
   await setDoc(
-    callRef,
+    aiSessionRef,
     {
       aiAssessment: {
         ...assessment,
@@ -294,12 +342,46 @@ export async function saveAIAssessment(
   );
 }
 
+// Update AI progress (Progressive updates during screening)
+export async function updateAIProgress(
+  callId: string,
+  progress: Omit<AIProgress, "lastUpdate">,
+): Promise<void> {
+  const aiSessionRef = doc(db, "aiSessions", callId);
+
+  // Filter out undefined values - Firebase doesn't accept them
+  const cleanProgress: any = {
+    lastUpdate: serverTimestamp(),
+  };
+
+  if (progress.estimatedUrgency !== undefined)
+    cleanProgress.estimatedUrgency = progress.estimatedUrgency;
+  if (progress.incidentType !== undefined)
+    cleanProgress.incidentType = progress.incidentType;
+  if (progress.location !== undefined)
+    cleanProgress.location = progress.location;
+  if (progress.keyDetails !== undefined)
+    cleanProgress.keyDetails = progress.keyDetails;
+  if (progress.hazardsDetected !== undefined)
+    cleanProgress.hazardsDetected = progress.hazardsDetected;
+  if (progress.peopleInvolved !== undefined)
+    cleanProgress.peopleInvolved = progress.peopleInvolved;
+
+  await setDoc(
+    aiSessionRef,
+    {
+      aiProgress: cleanProgress,
+    },
+    { merge: true },
+  );
+}
+
 // Add visual hazard detection
 export async function addVisualHazard(
   callId: string,
   hazard: Omit<VisualHazard, "timestamp">,
 ): Promise<void> {
-  const hazardsRef = collection(db, "calls", callId, "visualHazards");
+  const hazardsRef = collection(db, "aiSessions", callId, "visualHazards");
   await addDoc(hazardsRef, {
     ...hazard,
     timestamp: serverTimestamp(),
@@ -309,13 +391,21 @@ export async function addVisualHazard(
 // Listen for AI assessment updates
 export function listenForAIAssessment(
   callId: string,
-  callback: (assessment: AIAssessment | null, phase: CallPhase) => void,
+  callback: (
+    assessment: AIAssessment | null,
+    phase: CallPhase,
+    progress?: AIProgress | null,
+  ) => void,
 ): () => void {
-  const callRef = doc(db, "calls", callId);
+  const aiSessionRef = doc(db, "aiSessions", callId);
 
-  const unsubscribe = onSnapshot(callRef, (snapshot) => {
-    const data = snapshot.data() as CallData;
-    callback(data?.aiAssessment || null, data?.callPhase || "ai-screening");
+  const unsubscribe = onSnapshot(aiSessionRef, (snapshot) => {
+    const data = snapshot.data() as AISessionData;
+    callback(
+      data?.aiAssessment || null,
+      data?.callPhase || "ai-screening",
+      data?.aiProgress || null,
+    );
   });
 
   return unsubscribe;
@@ -326,10 +416,10 @@ export function listenForCallPhase(
   callId: string,
   callback: (phase: CallPhase) => void,
 ): () => void {
-  const callRef = doc(db, "calls", callId);
+  const aiSessionRef = doc(db, "aiSessions", callId);
 
-  const unsubscribe = onSnapshot(callRef, (snapshot) => {
-    const data = snapshot.data() as CallData;
+  const unsubscribe = onSnapshot(aiSessionRef, (snapshot) => {
+    const data = snapshot.data() as AISessionData;
     const phase = data?.callPhase || "ai-screening";
     callback(phase);
   });
@@ -352,7 +442,7 @@ export async function updateIncidentField(
   callId: string,
   update: IncidentUpdate,
 ) {
-  const updateRef = collection(db, "calls", callId, "incidentUpdates");
+  const updateRef = collection(db, "aiSessions", callId, "incidentUpdates");
   await addDoc(updateRef, {
     ...update,
     createdAt: serverTimestamp(),
@@ -364,7 +454,7 @@ export function listenForIncidentUpdates(
   callId: string,
   callback: (update: IncidentUpdate) => void,
 ): () => void {
-  const updatesRef = collection(db, "calls", callId, "incidentUpdates");
+  const updatesRef = collection(db, "aiSessions", callId, "incidentUpdates");
 
   const unsubscribe = onSnapshot(updatesRef, (snapshot) => {
     snapshot.docChanges().forEach((change) => {
@@ -383,7 +473,7 @@ export function listenForVisualHazards(
   callId: string,
   callback: (hazard: VisualHazard) => void,
 ): () => void {
-  const hazardsRef = collection(db, "calls", callId, "visualHazards");
+  const hazardsRef = collection(db, "aiSessions", callId, "visualHazards");
 
   const unsubscribe = onSnapshot(hazardsRef, (snapshot) => {
     snapshot.docChanges().forEach((change) => {

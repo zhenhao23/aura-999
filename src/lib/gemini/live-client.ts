@@ -20,7 +20,7 @@ export class GeminiLiveClient extends EventEmitter<GeminiLiveClientEvents> {
   constructor(apiKey: string) {
     super();
     this.client = new GoogleGenAI({ apiKey });
-    this.model = "models/gemini-3-flash-preview";
+    this.model = "models/gemini-2.0-flash-exp";
     this.config = {};
   }
 

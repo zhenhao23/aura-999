@@ -3,8 +3,17 @@ export interface AIAssessment {
   reasoning: string;
   shouldTransfer: boolean;
   initialSummary: string;
-  detectedLanguage?: string;
   completedAt: Date;
+}
+
+export interface AIProgress {
+  estimatedUrgency?: 1 | 2 | 3 | 4 | 5;
+  incidentType?: string;
+  location?: string;
+  keyDetails?: string[];
+  hazardsDetected?: string[];
+  peopleInvolved?: string;
+  lastUpdate: Date;
 }
 
 export interface IncidentField {

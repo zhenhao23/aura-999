@@ -24,7 +24,7 @@ import {
   endCall,
   CallerLocation,
 } from "@/lib/firebase/signaling";
-import { AIAssessment, CallPhase } from "@/types/ai-agent";
+import { AIAssessment, AIProgress, CallPhase } from "@/types/ai-agent";
 
 export default function DashboardPage() {
   // Use the first mock incident as the active incident
@@ -49,6 +49,7 @@ export default function DashboardPage() {
   );
   const [activeCallId, setActiveCallId] = useState<string | null>(null);
   const [aiAssessment, setAIAssessment] = useState<AIAssessment | null>(null);
+  const [aiProgress, setAIProgress] = useState<AIProgress | null>(null);
   const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
   const [callerLanguage, setCallerLanguage] =
@@ -80,14 +81,10 @@ export default function DashboardPage() {
 
     const unsubscribe = listenForAIAssessment(
       activeCallId,
-      (assessment, phase) => {
+      (assessment, phase, progress) => {
         setAIAssessment(assessment);
         setCallPhase(phase);
-
-        // Update caller language from AI assessment
-        if (assessment?.detectedLanguage) {
-          setCallerLanguage(assessment.detectedLanguage as SupportedLanguage);
-        }
+        setAIProgress(progress || null);
       },
     );
 
@@ -238,6 +235,7 @@ export default function DashboardPage() {
             <IncomingCallAlert
               callId={activeCallId}
               assessment={aiAssessment}
+              progress={aiProgress}
               location={
                 callerLocation
                   ? {

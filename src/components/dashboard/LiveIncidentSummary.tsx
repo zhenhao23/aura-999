@@ -7,9 +7,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   listenForIncidentUpdates,
   listenForVisualHazards,
+  listenForAIAssessment,
   type IncidentUpdate,
 } from "@/lib/firebase/signaling";
-import { VisualHazard } from "@/types/ai-agent";
+import { VisualHazard, AIAssessment, AIProgress } from "@/types/ai-agent";
 import { AlertTriangle, Eye, MapPin, Users, Info } from "lucide-react";
 
 interface LiveIncidentSummaryProps {
@@ -19,6 +20,8 @@ interface LiveIncidentSummaryProps {
 export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
   const [updates, setUpdates] = useState<IncidentUpdate[]>([]);
   const [hazards, setHazards] = useState<VisualHazard[]>([]);
+  const [aiAssessment, setAIAssessment] = useState<AIAssessment | null>(null);
+  const [aiProgress, setAIProgress] = useState<AIProgress | null>(null);
   const [incidentData, setIncidentData] = useState({
     type: "Unknown",
     location: "Determining...",
@@ -27,18 +30,48 @@ export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
     situation: "AI is observing...",
   });
 
+  // Listen for AI assessment and progress (baseline data)
+  useEffect(() => {
+    if (!callId) {
+      setAIAssessment(null);
+      setAIProgress(null);
+      return;
+    }
+
+    const unsubscribe = listenForAIAssessment(
+      callId,
+      (assessment, phase, progress) => {
+        setAIAssessment(assessment);
+        setAIProgress(progress);
+
+        // Initialize incident data from AI assessment/progress
+        if (assessment || progress) {
+          setIncidentData({
+            type:
+              progress?.incidentType ||
+              assessment?.initialSummary?.split(" ")[0] ||
+              "Unknown",
+            location: progress?.location || "Determining...",
+            severity: assessment?.urgencyLevel
+              ? `Level ${assessment.urgencyLevel}`
+              : "Unknown",
+            victims: progress?.peopleInvolved || "Unknown",
+            situation:
+              assessment?.initialSummary ||
+              progress?.keyDetails?.join(", ") ||
+              "AI is observing...",
+          });
+        }
+      },
+    );
+
+    return () => unsubscribe();
+  }, [callId]);
+
   // Listen for incident field updates
   useEffect(() => {
     if (!callId) {
       setUpdates([]);
-      setHazards([]);
-      setIncidentData({
-        type: "Unknown",
-        location: "Determining...",
-        severity: "Unknown",
-        victims: "Unknown",
-        situation: "AI is observing...",
-      });
       return;
     }
 
@@ -58,7 +91,10 @@ export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
 
   // Listen for visual hazards
   useEffect(() => {
-    if (!callId) return;
+    if (!callId) {
+      setHazards([]);
+      return;
+    }
 
     const unsubscribe = listenForVisualHazards(callId, (hazard) => {
       setHazards((prev) => [hazard, ...prev].slice(0, 10)); // Keep last 10

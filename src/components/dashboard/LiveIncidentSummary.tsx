@@ -42,7 +42,7 @@ export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
       callId,
       (assessment, phase, progress) => {
         setAIAssessment(assessment);
-        setAIProgress(progress);
+        setAIProgress(progress ?? null);
 
         // Initialize incident data from AI assessment/progress
         if (assessment || progress) {

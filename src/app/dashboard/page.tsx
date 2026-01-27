@@ -55,19 +55,14 @@ export default function DashboardPage() {
   const [callerLanguage, setCallerLanguage] =
     useState<SupportedLanguage>("Malay");
 
-  // Listen for incoming calls and location updates
+  // Listen for incoming calls
   useEffect(() => {
-    const unsubscribeCalls = listenForIncomingCalls((callId, callData) => {
+    const unsubscribeCalls = listenForIncomingCalls((callId) => {
       setActiveCallId(callId);
 
       // Show alert immediately for demo purposes
       setShowIncomingAlert(true);
       playNotificationSound();
-
-      // If call already has location, set it
-      if (callData.currentLocation) {
-        setCallerLocation(callData.currentLocation);
-      }
     });
 
     return () => {

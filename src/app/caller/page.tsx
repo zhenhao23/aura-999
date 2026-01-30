@@ -215,10 +215,20 @@ export default function CallerPage() {
     try {
       setError(null);
 
-      // Get user media (camera + mic)
+      // Get user media (camera + mic) - optimized for low latency
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 1280, height: 720 },
-        audio: true,
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 30 }, // Limit to 30fps for efficiency
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true, // Better voice clarity
+          sampleRate: { ideal: 16000 }, // Match AI requirements
+        },
       });
 
       streamRef.current = stream;
@@ -248,10 +258,11 @@ export default function CallerPage() {
       });
       audioRecorderRef.current = recorder;
 
-      // Send video frames every 2 seconds
+      // Send video frames every 1 second (faster hazard detection)
+      // Balance: 1s = good responsiveness, minimal bandwidth
       const interval = setInterval(() => {
         captureAndSendVideoFrame();
-      }, 2000);
+      }, 1000); // Changed from 2000ms to 1000ms
       videoIntervalRef.current = interval;
     } catch (err) {
       console.error("Error starting call:", err);
@@ -259,31 +270,38 @@ export default function CallerPage() {
     }
   };
 
-  // Capture video frame and send to AI
+  // Capture video frame and send to AI (optimized for low latency)
   const captureAndSendVideoFrame = () => {
     if (!videoRef.current || !callId) return;
 
     const video = videoRef.current;
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
+
+    // Downscale to 640x360 for faster processing (HD not needed for AI analysis)
+    const targetWidth = 640;
+    const targetHeight = Math.round(
+      (video.videoHeight / video.videoWidth) * targetWidth,
+    );
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const ctx = canvas.getContext("2d", { willReadFrequently: false });
     if (!ctx) return;
 
-    ctx.drawImage(video, 0, 0);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          sendVideoToAI(base64);
-        };
-        reader.readAsDataURL(blob);
-      },
-      "image/jpeg",
-      0.8,
-    );
+    // Use image smoothing for better quality at lower resolution
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(video, 0, 0, targetWidth, targetHeight);
+
+    // Convert directly to base64 (faster than toBlob + FileReader)
+    try {
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7); // Lower quality for speed
+      const base64 = dataUrl.split(",")[1];
+      sendVideoToAI(base64);
+    } catch (error) {
+      console.error("Error capturing video frame:", error);
+    }
   };
 
   // Start WebRTC connection to dispatcher (called when dispatcher accepts)

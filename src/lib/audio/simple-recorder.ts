@@ -2,7 +2,7 @@ export class SimpleAudioRecorder {
   private mediaStream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
-  private processorNode: ScriptProcessorNode | null = null;
+  private workletNode: AudioWorkletNode | null = null;
   private isRecording = false;
   private onDataCallback: ((data: string) => void) | null = null;
 
@@ -16,24 +16,87 @@ export class SimpleAudioRecorder {
         channelCount: 1,
         echoCancellation: true,
         noiseSuppression: true,
+        autoGainControl: true, // Better voice clarity
       },
     });
 
     // Create audio context
     this.audioContext = new AudioContext({ sampleRate: 16000 });
+
+    // Try to use AudioWorklet (modern, low-latency)
+    // Fallback to ScriptProcessor if AudioWorklet not supported
+    try {
+      await this.startWithAudioWorklet();
+    } catch (error) {
+      console.warn("AudioWorklet not supported, using fallback:", error);
+      this.startWithScriptProcessor();
+    }
+  }
+
+  private async startWithAudioWorklet() {
+    if (!this.audioContext || !this.mediaStream) return;
+
+    // Load audio worklet processor
+    const workletCode = `
+      class AudioCaptureProcessor extends AudioWorkletProcessor {
+        process(inputs, outputs) {
+          const input = inputs[0];
+          if (input.length > 0) {
+            const channelData = input[0];
+            this.port.postMessage(channelData);
+          }
+          return true;
+        }
+      }
+      registerProcessor('audio-capture-processor', AudioCaptureProcessor);
+    `;
+    const blob = new Blob([workletCode], { type: "application/javascript" });
+    const workletUrl = URL.createObjectURL(blob);
+
+    await this.audioContext.audioWorklet.addModule(workletUrl);
+    URL.revokeObjectURL(workletUrl);
+
+    this.sourceNode = this.audioContext.createMediaStreamSource(
+      this.mediaStream,
+    );
+    this.workletNode = new AudioWorkletNode(
+      this.audioContext,
+      "audio-capture-processor",
+    );
+
+    this.workletNode.port.onmessage = (event) => {
+      if (!this.isRecording) return;
+
+      const float32Data = event.data;
+      const pcm16 = this.floatTo16BitPCM(float32Data);
+      const base64 = this.arrayBufferToBase64(pcm16);
+
+      if (this.onDataCallback) {
+        this.onDataCallback(base64);
+      }
+    };
+
+    this.sourceNode.connect(this.workletNode);
+    this.workletNode.connect(this.audioContext.destination);
+    this.isRecording = true;
+  }
+
+  private startWithScriptProcessor() {
+    if (!this.audioContext || !this.mediaStream) return;
+
     this.sourceNode = this.audioContext.createMediaStreamSource(
       this.mediaStream,
     );
 
-    // Create processor node for audio data
-    const bufferSize = 4096;
-    this.processorNode = this.audioContext.createScriptProcessor(
+    // Use smaller buffer for lower latency (256 samples = ~16ms at 16kHz)
+    const bufferSize = 2048; // Reduced from 4096
+    const processorNode = this.audioContext.createScriptProcessor(
       bufferSize,
       1,
       1,
     );
 
-    this.processorNode.onaudioprocess = (e) => {
+    processorNode.onaudioprocess = (e) => {
       if (!this.isRecording) return;
 
       const inputData = e.inputBuffer.getChannelData(0);
@@ -45,18 +108,17 @@ export class SimpleAudioRecorder {
       }
     };
 
-    this.sourceNode.connect(this.processorNode);
-    this.processorNode.connect(this.audioContext.destination);
-
+    this.sourceNode.connect(processorNode);
+    processorNode.connect(this.audioContext.destination);
     this.isRecording = true;
   }
 
   stop() {
     this.isRecording = false;
 
-    if (this.processorNode) {
-      this.processorNode.disconnect();
-      this.processorNode = null;
+    if (this.workletNode) {
+      this.workletNode.disconnect();
+      this.workletNode = null;
     }
 
     if (this.sourceNode) {
@@ -88,11 +150,16 @@ export class SimpleAudioRecorder {
   }
 
   private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    // Optimized base64 encoding using Uint8Array chunks
     const bytes = new Uint8Array(buffer);
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    const chunkSize = 0x8000; // 32KB chunks
+    const chunks: string[] = [];
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      chunks.push(String.fromCharCode.apply(null, Array.from(chunk)));
     }
-    return btoa(binary);
+
+    return btoa(chunks.join(""));
   }
 }

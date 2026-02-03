@@ -40,8 +40,9 @@ export const STATIONS: Station[] = [
 ];
 
 // Helper function to get stations by agency
-export function getStationsByAgency(agency: Station["agency"]): Station[] {
-  return STATIONS.filter((station) => station.agency === agency);
+export function getStationsByAgency(agency: Station["agency"], availableStations?: Station[]): Station[] {
+  const stations = availableStations || STATIONS;
+  return stations.filter((station) => station.agency === agency);
 }
 
 // Helper function to get nearest station
@@ -49,8 +50,9 @@ export function getNearestStation(
   lat: number,
   lng: number,
   agency?: Station["agency"],
+  availableStations?: Station[],
 ): Station | null {
-  const stations = agency ? getStationsByAgency(agency) : STATIONS;
+  const stations = agency ? getStationsByAgency(agency, availableStations) : (availableStations || STATIONS);
 
   if (stations.length === 0) return null;
 
@@ -92,9 +94,9 @@ function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;

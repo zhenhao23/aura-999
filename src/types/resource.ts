@@ -38,3 +38,15 @@ export interface ResourceAllocationSuggestion {
   estimatedETA: number;
   routeDistance?: number; // in kilometers
 }
+
+export interface GooglePlaceResult {
+  place_id?: string;
+  name?: string;
+  vicinity?: string;
+  geometry?: {
+    location?: {
+      lat?: number;
+      lng?: number;
+    };
+  };
+};

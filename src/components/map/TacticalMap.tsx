@@ -8,8 +8,8 @@ import {
   Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { Incident, ResourceAllocationSuggestion } from "@/types";
-import { STATIONS } from "@/data/stations";
+import { Incident, ResourceAllocationSuggestion, Station } from "@/types";
+// import { STATIONS } from "@/data/stations";
 import { CallerLocation } from "@/lib/firebase/signaling";
 
 interface MovingResource {
@@ -34,6 +34,7 @@ interface TacticalMapProps {
   dispatchedResources: string[];
   suggestions: ResourceAllocationSuggestion[];
   callerLocation?: CallerLocation | null;
+  availableStations?: Station[];
 }
 
 export function TacticalMap({
@@ -41,15 +42,16 @@ export function TacticalMap({
   dispatchedResources,
   suggestions,
   callerLocation,
+  availableStations,
 }: TacticalMapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
   // Use caller location if available, otherwise use incident location (Heriot-Watt University Malaysia)
   const center = callerLocation
     ? {
-        lat: callerLocation.coords.latitude,
-        lng: callerLocation.coords.longitude,
-      }
+      lat: callerLocation.coords.latitude,
+      lng: callerLocation.coords.longitude,
+    }
     : { lat: 2.8994930048635545, lng: 101.6725950816638 };
 
   return (
@@ -76,6 +78,7 @@ export function TacticalMap({
           dispatchedResources={dispatchedResources}
           suggestions={suggestions}
           callerLocation={callerLocation}
+          availableStations={availableStations}
         />
       </Map>
     </APIProvider>
@@ -88,6 +91,7 @@ function MapContent({
   dispatchedResources,
   suggestions,
   callerLocation,
+  availableStations,
 }: TacticalMapProps) {
   const map = useMap();
   const [isPulsing, setIsPulsing] = useState(false);
@@ -344,9 +348,9 @@ function MapContent({
   // Use caller location if available, otherwise use incident location (Heriot-Watt University Malaysia)
   const center = callerLocation
     ? {
-        lat: callerLocation.coords.latitude,
-        lng: callerLocation.coords.longitude,
-      }
+      lat: callerLocation.coords.latitude,
+      lng: callerLocation.coords.longitude,
+    }
     : { lat: 2.8994930048635545, lng: 101.6725950816638 };
 
   return (
@@ -364,9 +368,8 @@ function MapContent({
             <div className="relative flex items-center justify-center">
               {/* Pulsing outer ring */}
               <div
-                className={`absolute rounded-full bg-blue-500/30 border-2 border-blue-400 transition-all duration-1000 ${
-                  isPulsing ? "scale-150 opacity-0" : "scale-100 opacity-100"
-                }`}
+                className={`absolute rounded-full bg-blue-500/30 border-2 border-blue-400 transition-all duration-1000 ${isPulsing ? "scale-150 opacity-0" : "scale-100 opacity-100"
+                  }`}
                 style={{
                   width: "48px",
                   height: "48px",
@@ -398,7 +401,7 @@ function MapContent({
       )}
 
       {/* Station Markers */}
-      {STATIONS.map((station) => (
+      {/* {STATIONS.map((station) => (
         <AdvancedMarker
           key={station.id}
           position={{ lat: station.location.lat, lng: station.location.lng }}
@@ -410,7 +413,40 @@ function MapContent({
             scale={0.8}
           />
         </AdvancedMarker>
-      ))}
+      ))} */}
+
+      {/* Emergency Station Markers */}
+      {/* {availableStations?.map((station) => (
+        <AdvancedMarker
+          key={station.id}
+          position={{ lat: station.location.lat, lng: station.location.lng }}
+        >
+          <Pin
+            background={getAgencyColor(station.agency)}
+            borderColor="#fff"
+            glyphColor="#fff"
+            scale={0.8}
+          />
+        </AdvancedMarker>
+      ))} */}
+
+      {/* Suggested Station Markers */}
+      {suggestions.map((sug) => {
+        const { station } = sug.resource;
+        return (
+          <AdvancedMarker
+            key={station.id}
+            position={{ lat: station.location.lat, lng: station.location.lng }}
+          >
+            <Pin
+              background={getAgencyColor(station.agency)}
+              borderColor="#fff"
+              glyphColor="#fff"
+              scale={0.8}
+            />
+          </AdvancedMarker>
+        );
+      })}
 
       {/* Traffic Lights - Only show after first vehicle arrives */}
       {showTrafficLights &&
@@ -439,7 +475,8 @@ function MapContent({
               </div>
             </AdvancedMarker>
           );
-        })}
+        })
+      }
 
       {/* Moving Resources */}
       {movingResources.map((resource) => (
@@ -465,11 +502,13 @@ function MapContent({
             {/* ETA Badge */}
             <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
               ETA:{" "}
-              {Math.ceil(
-                resource.realEtaMinutes *
+              {Math.max(
+                0,
+                Math.ceil(
+                  resource.realEtaMinutes *
                   (1 -
                     (Date.now() - resource.startTime) / (resource.eta * 1000)),
-              )}
+                ))}
               min
               <br />
               {resource.distanceRemaining.toFixed(1)}km
@@ -601,9 +640,9 @@ function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }

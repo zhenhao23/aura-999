@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { IntelligentSummary } from "@/components/dashboard/IntelligentSummary";
 import { ResourceAllocation } from "@/components/dashboard/ResourceAllocation";
@@ -15,7 +15,7 @@ import {
 } from "@/lib/gemini/translator";
 import { MOCK_INCIDENTS } from "@/data/mock-incidents";
 import { generateResourceSuggestions } from "@/lib/resource-optimizer";
-import { Message, ResourceAllocationSuggestion } from "@/types";
+import { Message, ResourceAllocationSuggestion, Station } from "@/types";
 import {
   listenForIncomingCalls,
   listenForLocationUpdates,
@@ -25,13 +25,17 @@ import {
   CallerLocation,
 } from "@/lib/firebase/signaling";
 import { AIAssessment, AIProgress, CallPhase } from "@/types/ai-agent";
+import { getEmergencyServices } from "@/lib/maps/emergency-resource";
 
 export default function DashboardPage() {
   // Use the first mock incident as the active incident
   const [activeIncident] = useState(MOCK_INCIDENTS[0]);
-  const [suggestions] = useState<ResourceAllocationSuggestion[]>(
-    generateResourceSuggestions(activeIncident),
-  );
+  const [emergencyServices, setEmergencyServices] = useState<
+    Station[]
+  >([]);
+  const suggestions = useMemo(() => {
+    return generateResourceSuggestions(activeIncident, emergencyServices);
+  }, [activeIncident, emergencyServices]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "msg-1",
@@ -52,8 +56,59 @@ export default function DashboardPage() {
   const [aiProgress, setAIProgress] = useState<AIProgress | null>(null);
   const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
-  const [callerLanguage, setCallerLanguage] =
-    useState<SupportedLanguage>("Malay");
+  const [callerLanguage, setCallerLanguage] = useState<SupportedLanguage>("Malay");
+
+
+  // Play notification sound
+  const playNotificationSound = () => {
+    // Create an audio context and play a simple beep
+    try {
+      const audioContext = new AudioContext();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.frequency.value = 800;
+      oscillator.type = "sine";
+
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.5,
+      );
+
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+      console.log("Could not play notification sound:", error);
+    }
+  };
+
+  useEffect(() => {
+    let isActive = true;
+    const center = callerLocation
+      ? {
+        lat: callerLocation.coords.latitude,
+        lng: callerLocation.coords.longitude,
+      }
+      : { lat: 2.8994930048635545, lng: 101.6725950816638 };
+
+    getEmergencyServices(center.lat, center.lng)
+      .then((services) => {
+        if (isActive) {
+          setEmergencyServices(services);
+        }
+      })
+      .catch((error) => {
+        console.error("Emergency services fetch failed:", error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [callerLocation]);
 
   // Listen for incoming calls
   useEffect(() => {
@@ -177,33 +232,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Play notification sound
-  const playNotificationSound = () => {
-    // Create an audio context and play a simple beep
-    try {
-      const audioContext = new AudioContext();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      oscillator.frequency.value = 800;
-      oscillator.type = "sine";
-
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        audioContext.currentTime + 0.5,
-      );
-
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
-      console.log("Could not play notification sound:", error);
-    }
-  };
-
   // Filter out dispatched and denied resources from suggestions
   const availableSuggestions = suggestions.filter(
     (s) =>
@@ -220,6 +248,7 @@ export default function DashboardPage() {
           dispatchedResources={dispatchedResources}
           suggestions={suggestions}
           callerLocation={callerLocation}
+          availableStations={emergencyServices}
         />
       </div>
 
@@ -234,12 +263,12 @@ export default function DashboardPage() {
               location={
                 callerLocation
                   ? {
-                      address: callerLocation.address,
-                      coords: {
-                        latitude: callerLocation.coords.latitude,
-                        longitude: callerLocation.coords.longitude,
-                      },
-                    }
+                    address: callerLocation.address,
+                    coords: {
+                      latitude: callerLocation.coords.latitude,
+                      longitude: callerLocation.coords.longitude,
+                    },
+                  }
                   : undefined
               }
               onAccept={handleAcceptCall}

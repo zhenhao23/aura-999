@@ -1,4 +1,4 @@
-import { Resource, ResourceAllocationSuggestion } from "@/types/resource";
+import { Resource, ResourceAllocationSuggestion, Station } from "@/types/resource";
 import { Incident } from "@/types/incident";
 import { STATIONS, getNearestStation } from "@/data/stations";
 
@@ -25,9 +25,9 @@ export function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+    Math.cos(toRad(lat2)) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
@@ -40,6 +40,7 @@ function toRad(degrees: number): number {
 // Generate resource suggestions based on incident
 export function generateResourceSuggestions(
   incident: Incident,
+  availableStations: Station[],
 ): ResourceAllocationSuggestion[] {
   const suggestions: ResourceAllocationSuggestion[] = [];
 
@@ -73,6 +74,7 @@ export function generateResourceSuggestions(
       incident.location.lat,
       incident.location.lng,
       req.agency,
+      availableStations,
     );
 
     if (station) {

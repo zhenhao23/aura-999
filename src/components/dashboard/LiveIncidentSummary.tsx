@@ -9,15 +9,20 @@ import {
   listenForVisualHazards,
   listenForAIAssessment,
   type IncidentUpdate,
+  type CallerLocation,
 } from "@/lib/firebase/signaling";
 import { VisualHazard, AIAssessment, AIProgress } from "@/types/ai-agent";
 import { AlertTriangle, Eye, MapPin, Users, Info } from "lucide-react";
 
 interface LiveIncidentSummaryProps {
   callId: string | null;
+  callerLocation?: CallerLocation | null;
 }
 
-export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
+export function LiveIncidentSummary({
+  callId,
+  callerLocation,
+}: LiveIncidentSummaryProps) {
   const [updates, setUpdates] = useState<IncidentUpdate[]>([]);
   const [hazards, setHazards] = useState<VisualHazard[]>([]);
   const [aiAssessment, setAIAssessment] = useState<AIAssessment | null>(null);
@@ -124,36 +129,24 @@ export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
     return "text-orange-400";
   };
 
-  if (!callId) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Eye className="w-4 h-4" />
-            AI Shadow Mode - Inactive
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Waiting for active call...
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isActive = callId !== null;
 
   return (
-    <Card className="border-purple-500/30">
+    <Card className={isActive ? "border-purple-500/30" : ""}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Eye className="w-4 h-4 text-purple-400" />
-            🤖 AI Shadow Mode - Live Updates
+            <Eye className={`w-4 h-4 ${isActive ? "text-purple-400" : ""}`} />
+            {isActive
+              ? "🤖 AI Shadow Mode - Live Updates"
+              : "AI Shadow Mode - Inactive"}
           </CardTitle>
-          <Badge className="bg-purple-600 animate-pulse">Observing</Badge>
+          {isActive && (
+            <Badge className="bg-purple-600 animate-pulse">Observing</Badge>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {/* Current Incident Summary */}
         <div className="space-y-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
           <h4 className="text-xs font-semibold text-purple-300 uppercase">
@@ -163,29 +156,55 @@ export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span className="text-muted-foreground">Type:</span>
-              <p className="font-semibold">{incidentData.type}</p>
+              <p className="font-semibold">
+                {isActive ? (
+                  incidentData.type
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </p>
             </div>
             <div>
               <span className="text-muted-foreground">Severity:</span>
-              <p className="font-semibold">{incidentData.severity}</p>
+              <p className="font-semibold">
+                {isActive ? (
+                  incidentData.severity
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </p>
             </div>
             <div className="col-span-2">
               <span className="text-muted-foreground">Location:</span>
               <p className="font-semibold flex items-center gap-1">
                 <MapPin className="w-3 h-3" />
-                {incidentData.location}
+                {isActive ? (
+                  incidentData.location
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
               </p>
             </div>
             <div className="col-span-2">
               <span className="text-muted-foreground">Victims:</span>
               <p className="font-semibold flex items-center gap-1">
                 <Users className="w-3 h-3" />
-                {incidentData.victims}
+                {isActive ? (
+                  incidentData.victims
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
               </p>
             </div>
             <div className="col-span-2">
               <span className="text-muted-foreground">Situation:</span>
-              <p className="text-sm">{incidentData.situation}</p>
+              <p className="text-sm">
+                {isActive ? (
+                  incidentData.situation
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -263,6 +282,33 @@ export function LiveIncidentSummary({ callId }: LiveIncidentSummaryProps) {
               )}
             </div>
           </ScrollArea>
+        </div>
+
+        {/* Live Caller Location */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold text-blue-300 uppercase flex items-center gap-1">
+            📍 Live Caller Location
+          </h4>
+          {callerLocation ? (
+            <div className="bg-blue-950/30 border border-blue-500/50 rounded p-2">
+              <p className="text-xs text-gray-300">
+                {callerLocation.coords.latitude.toFixed(6)},{" "}
+                {callerLocation.coords.longitude.toFixed(6)}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Accuracy: ±{Math.round(callerLocation.accuracy)}m
+              </p>
+              {callerLocation.address && (
+                <p className="text-xs text-gray-300 mt-1">
+                  {callerLocation.address}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="bg-slate-900/50 border border-slate-700 rounded p-2">
+              <p className="text-xs text-muted-foreground">-</p>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

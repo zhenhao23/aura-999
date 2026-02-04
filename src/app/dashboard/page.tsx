@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { IntelligentSummary } from "@/components/dashboard/IntelligentSummary";
 import { ResourceAllocation } from "@/components/dashboard/ResourceAllocation";
 import { LiveFeed } from "@/components/dashboard/LiveFeed";
 import { LiveIncidentSummary } from "@/components/dashboard/LiveIncidentSummary";
@@ -30,9 +29,7 @@ import { getEmergencyServices } from "@/lib/maps/emergency-resource";
 export default function DashboardPage() {
   // Use the first mock incident as the active incident
   const [activeIncident] = useState(MOCK_INCIDENTS[0]);
-  const [emergencyServices, setEmergencyServices] = useState<
-    Station[]
-  >([]);
+  const [emergencyServices, setEmergencyServices] = useState<Station[]>([]);
   const suggestions = useMemo(() => {
     return generateResourceSuggestions(activeIncident, emergencyServices);
   }, [activeIncident, emergencyServices]);
@@ -56,8 +53,8 @@ export default function DashboardPage() {
   const [aiProgress, setAIProgress] = useState<AIProgress | null>(null);
   const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
-  const [callerLanguage, setCallerLanguage] = useState<SupportedLanguage>("Malay");
-
+  const [callerLanguage, setCallerLanguage] =
+    useState<SupportedLanguage>("Malay");
 
   // Play notification sound
   const playNotificationSound = () => {
@@ -90,9 +87,9 @@ export default function DashboardPage() {
     let isActive = true;
     const center = callerLocation
       ? {
-        lat: callerLocation.coords.latitude,
-        lng: callerLocation.coords.longitude,
-      }
+          lat: callerLocation.coords.latitude,
+          lng: callerLocation.coords.longitude,
+        }
       : { lat: 2.8994930048635545, lng: 101.6725950816638 };
 
     getEmergencyServices(center.lat, center.lng)
@@ -263,12 +260,12 @@ export default function DashboardPage() {
               location={
                 callerLocation
                   ? {
-                    address: callerLocation.address,
-                    coords: {
-                      latitude: callerLocation.coords.latitude,
-                      longitude: callerLocation.coords.longitude,
-                    },
-                  }
+                      address: callerLocation.address,
+                      coords: {
+                        latitude: callerLocation.coords.latitude,
+                        longitude: callerLocation.coords.longitude,
+                      },
+                    }
                   : undefined
               }
               onAccept={handleAcceptCall}
@@ -280,30 +277,26 @@ export default function DashboardPage() {
 
       {/* Quadrant Grid Overlay */}
       <div className="absolute inset-0 z-10 grid grid-cols-8 grid-rows-2 gap-4 p-4 pointer-events-none">
-        <div className="col-span-2 overflow-auto pointer-events-auto">
-          <IntelligentSummary
-            incident={activeIncident}
-            callerLocation={callerLocation}
-          />
-        </div>
-
         {/* AI Shadow Mode - Live Incident Summary */}
         <div className="col-span-2 overflow-auto pointer-events-auto">
           <LiveIncidentSummary
             callId={callPhase === "dispatcher-active" ? activeCallId : null}
+            callerLocation={callerLocation}
           />
         </div>
 
-        <div className="col-span-1 pointer-events-none"></div>
+        <div className="col-span-4 pointer-events-none"></div>
 
-        <div
-          className={`col-span-3 overflow-auto pointer-events-auto ${availableSuggestions.length === 0 ? "invisible" : ""}`}
-        >
-          <ResourceAllocation
-            suggestions={availableSuggestions}
-            onApprove={handleApprove}
-            onDeny={handleDeny}
-          />
+        <div className="col-span-2 overflow-auto pointer-events-auto">
+          <div
+            className={`${availableSuggestions.length === 0 ? "invisible" : ""}`}
+          >
+            <ResourceAllocation
+              suggestions={availableSuggestions}
+              onApprove={handleApprove}
+              onDeny={handleDeny}
+            />
+          </div>
         </div>
 
         <div className="col-span-2 overflow-auto pointer-events-auto">

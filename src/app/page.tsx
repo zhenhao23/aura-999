@@ -91,6 +91,14 @@ export default function Home() {
               📱 Caller Interface
             </Button>
           </Link>
+          <Link href="/analytics">
+            <Button
+              size="lg"
+              className="text-base px-8 bg-green-600 hover:bg-green-700"
+            >
+              📊 Analytics Page
+            </Button>
+          </Link>
         </div>
 
         <div className="mt-12 text-center space-y-2">

@@ -83,6 +83,14 @@ export default function Home() {
               🚨 Open Dispatcher Dashboard
             </Button>
           </Link>
+          <Link href="/incident-log">
+            <Button
+              size="lg"
+              className="text-base px-8 bg-purple-600 hover:bg-purple-700"
+            >
+              📋 Incident Log
+            </Button>
+          </Link>
           <Link href="/caller">
             <Button
               size="lg"

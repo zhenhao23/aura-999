@@ -8,6 +8,9 @@ import { LiveIncidentSummary } from "@/components/dashboard/LiveIncidentSummary"
 import { UniversalComms } from "@/components/dashboard/UniversalComms";
 import { IncomingCallAlert } from "@/components/dashboard/IncomingCallAlert";
 import { TacticalMap } from "@/components/map/TacticalMap";
+import { Button } from "@/components/ui/button";
+import { FileText } from "lucide-react";
+import Link from "next/link";
 import {
   translateDispatcherMessage,
   type SupportedLanguage,
@@ -247,6 +250,16 @@ export default function DashboardPage() {
           callerLocation={callerLocation}
           availableStations={emergencyServices}
         />
+      </div>
+
+      {/* Floating Incident Log Button */}
+      <div className="absolute top-4 right-4 z-20">
+        <Link href="/incident-log">
+          <Button className="shadow-lg backdrop-blur-sm bg-primary/90 hover:bg-primary">
+            <FileText className="w-4 h-4 mr-2" />
+            Incident Log
+          </Button>
+        </Link>
       </div>
 
       {/* Incoming Call Alert Overlay */}

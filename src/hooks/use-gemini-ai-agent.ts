@@ -39,6 +39,7 @@ export function useGeminiAIAgent({
   const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastAudioTimeRef = useRef<number>(0);
+  const callSyncedRef = useRef(false);
 
   // Keep callIdRef in sync with callId prop
   useEffect(() => {
@@ -63,6 +64,7 @@ export function useGeminiAIAgent({
 
     client.on("close", () => {
       setIsConnected(false);
+      callSyncedRef.current = false;
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
         heartbeatIntervalRef.current = null;
@@ -71,6 +73,7 @@ export function useGeminiAIAgent({
 
     client.on("error", (error) => {
       console.error("AI Agent error:", error);
+      callSyncedRef.current = false;
     });
 
     client.on("audio", (audioData, sampleRate) => {
@@ -100,44 +103,6 @@ export function useGeminiAIAgent({
       client.disconnect();
     };
   }, []); // Remove 'enabled' dependency
-
-  // Connect to Gemini Live API when call starts
-  const connect = useCallback(
-    async (activeCallId?: string) => {
-      const targetCallId = activeCallId || callId;
-
-      if (!clientRef.current || !targetCallId) {
-        return false;
-      }
-      const config = {
-        responseModalities: [Modality.AUDIO],
-        systemInstruction: {
-          parts: [{ text: PHASE_1_SYSTEM_PROMPT }],
-        },
-        tools: [
-          { functionDeclarations: [assessUrgencyTool, updateAIProgressTool] },
-        ],
-      };
-
-      console.log(
-        "🤖 Connecting to Gemini AI with tools:",
-        config.tools[0].functionDeclarations.map((t) => t.name),
-      );
-      const success = await clientRef.current.connect(config);
-      if (success && targetCallId) {
-        console.log("✅ AI connected successfully for call:", targetCallId);
-        await updateCallPhase(targetCallId, "ai-screening");
-        setCurrentPhase("ai-screening");
-        
-        // Start heartbeat to keep connection alive
-        startHeartbeat();
-      } else {
-        console.error("❌ AI connection failed");
-      }
-      return success;
-    },
-    [callId],
-  );
 
   // Enter shadow mode - AI observes silently
   const enterShadowMode = useCallback(() => {
@@ -170,6 +135,7 @@ export function useGeminiAIAgent({
       clearInterval(heartbeatIntervalRef.current);
       heartbeatIntervalRef.current = null;
     }
+    callSyncedRef.current = false;
     if (clientRef.current) {
       clientRef.current.disconnect();
     }
@@ -205,10 +171,66 @@ export function useGeminiAIAgent({
     console.log("💓 Heartbeat started");
   }, []);
 
+  // Connect to Gemini Live API when call starts
+  const syncCallIfNeeded = useCallback(
+    async (activeCallId?: string) => {
+      if (!activeCallId || callSyncedRef.current) return;
+      await updateCallPhase(activeCallId, "ai-screening");
+      setCurrentPhase("ai-screening");
+      callSyncedRef.current = true;
+      startHeartbeat();
+    },
+    [startHeartbeat],
+  );
+
+  const connect = useCallback(
+    async (activeCallId?: string, options?: { skipCallSync?: boolean }) => {
+      const targetCallId = activeCallId || callId;
+
+      if (!clientRef.current || !targetCallId) {
+        if (!clientRef.current || !options?.skipCallSync) {
+          return false;
+        }
+      }
+      const config = {
+        responseModalities: [Modality.AUDIO],
+        systemInstruction: {
+          parts: [{ text: PHASE_1_SYSTEM_PROMPT }],
+        },
+        tools: [
+          { functionDeclarations: [assessUrgencyTool, updateAIProgressTool] },
+        ],
+      };
+
+      console.log(
+        "🤖 Connecting to Gemini AI with tools:",
+        config.tools[0].functionDeclarations.map((t) => t.name),
+      );
+      if (!clientRef.current) return false;
+      const success = await clientRef.current.connect(config);
+      if (success) {
+        if (targetCallId && !options?.skipCallSync) {
+          console.log("✅ AI connected successfully for call:", targetCallId);
+          await syncCallIfNeeded(targetCallId);
+        }
+        return true;
+      }
+      console.error("❌ AI connection failed");
+      return false;
+    },
+    [callId, syncCallIfNeeded],
+  );
+
+  const preconnect = useCallback(async () => {
+    if (clientRef.current?.isConnected()) return true;
+    return connect(undefined, { skipCallSync: true });
+  }, [connect]);
+
   // Send audio to AI
   const sendAudio = useCallback((audioData: string) => {
-    if (clientRef.current?.isConnected()) {
-      clientRef.current.sendAudio(audioData);
+    if (!clientRef.current) return;
+    clientRef.current.sendAudio(audioData);
+    if (clientRef.current.isConnected()) {
       lastAudioTimeRef.current = Date.now();
     }
   }, []);
@@ -469,6 +491,7 @@ export function useGeminiAIAgent({
     currentPhase,
     aiTranscript,
     connect,
+    preconnect,
     disconnect,
     enterShadowMode,
     sendAudio,

@@ -78,6 +78,7 @@ export default function CallerPage() {
   const {
     isConnected: aiConnected,
     connect: connectAI,
+    preconnect: preconnectAI,
     disconnect: disconnectAI,
     enterShadowMode,
     sendAudio: sendAudioToAI,
@@ -87,6 +88,10 @@ export default function CallerPage() {
     onTransferRequested: handleDispatcherHandoff,
     enabled: currentPhase === "ai-screening",
   });
+
+  useEffect(() => {
+    void preconnectAI();
+  }, [preconnectAI]);
 
   // Handler for when AI requests transfer to dispatcher
   async function handleDispatcherHandoff() {

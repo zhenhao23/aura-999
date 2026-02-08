@@ -12,7 +12,8 @@ import {
   type CallerLocation,
 } from "@/lib/firebase/signaling";
 import { VisualHazard, AIAssessment, AIProgress } from "@/types/ai-agent";
-import { AlertTriangle, Eye, MapPin, Users, Info } from "lucide-react";
+import { AlertTriangle, Eye, MapPin, Users, Info, Shield, AlertCircle } from "lucide-react";
+import { AssessmentValueLogging } from "@/components/dashboard/AiSummaryLogging";
 
 interface LiveIncidentSummaryProps {
   callId: string | null;
@@ -27,6 +28,11 @@ export function LiveIncidentSummary({
   const [hazards, setHazards] = useState<VisualHazard[]>([]);
   const [aiAssessment, setAIAssessment] = useState<AIAssessment | null>(null);
   const [aiProgress, setAIProgress] = useState<AIProgress | null>(null);
+  const [callerDetails, setCallerDetails] = useState({
+    phone: "+6016-1234567",
+    language: "English",
+    trustLevel: "High", // e.g., High, Medium, Low
+  })
   const [incidentData, setIncidentData] = useState({
     type: "Unknown",
     location: "Determining...",
@@ -131,6 +137,33 @@ export function LiveIncidentSummary({
 
   const isActive = callId !== null;
 
+  const getTrustBadge = () => {
+    switch (callerDetails?.trustLevel.toLowerCase()) {
+      case "high":
+        return (
+          <Badge className="bg-green-600 flex items-center gap-1">
+            {/* High Trust or Genuine */}
+            <Shield className="w-3 h-3" />
+            High Trust
+          </Badge>
+        );
+      case "low":
+        return (
+          <Badge className="bg-red-600 animate-pulse flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            Suspicious
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-slate-600 flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            Neutral
+          </Badge>
+        );
+    }
+  };
+
   return (
     <Card className={isActive ? "border-purple-500/30" : ""}>
       <CardHeader className="pb-3">
@@ -147,6 +180,39 @@ export function LiveIncidentSummary({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Current Caller Details */}
+        <div className="space-y-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-semibold text-purple-300 uppercase">
+              Caller Information
+            </h4>
+            {isActive && getTrustBadge()}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Phone:</span>
+              <p className="font-semibold">
+                {isActive ? (
+                  callerDetails?.phone
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Language:</span>
+              <p className="font-semibold">
+                {isActive ? (
+                  callerDetails?.language
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Current Incident Summary */}
         <div className="space-y-2 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
           <h4 className="text-xs font-semibold text-purple-300 uppercase">
@@ -156,55 +222,94 @@ export function LiveIncidentSummary({
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span className="text-muted-foreground">Type:</span>
-              <p className="font-semibold">
-                {isActive ? (
-                  incidentData.type
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </p>
+              <div className="col-span-2 flex items-center gap-2">
+                <p className="font-semibold">
+                  {isActive ? (
+                    incidentData.type
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </p>
+                <AssessmentValueLogging
+                  value={incidentData.type}
+                  isActive={isActive}
+                  reasoning="Detected fire-like textures and smoke patterns in the video stream."
+                />
+              </div>
             </div>
+
             <div>
               <span className="text-muted-foreground">Severity:</span>
-              <p className="font-semibold">
-                {isActive ? (
-                  incidentData.severity
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </p>
+              <div className="col-span-2 flex items-center gap-2">
+                <p className="font-semibold">
+                  {isActive ? (
+                    incidentData.severity
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </p>
+                <AssessmentValueLogging
+                  value={incidentData.severity}
+                  isActive={isActive}
+                  reasoning="High probability of structural damage and immediate threat to life."
+                />
+              </div>
             </div>
+
             <div className="col-span-2">
               <span className="text-muted-foreground">Location:</span>
-              <p className="font-semibold flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                {isActive ? (
-                  incidentData.location
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </p>
+              <div className="col-span-2 flex items-center gap-2">
+                <p className="font-semibold flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {isActive ? (
+                    incidentData.location
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </p>
+                <AssessmentValueLogging
+                  value={incidentData.location}
+                  isActive={isActive}
+                  reasoning="GPS coordinates cross-referenced with local landmark recognition."
+                />
+              </div>
             </div>
+
             <div className="col-span-2">
               <span className="text-muted-foreground">Victims:</span>
-              <p className="font-semibold flex items-center gap-1">
-                <Users className="w-3 h-3" />
-                {isActive ? (
-                  incidentData.victims
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </p>
+              <div className="col-span-2 flex items-center gap-2">
+                <p className="font-semibold flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  {isActive ? (
+                    incidentData.victims
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </p>
+                <AssessmentValueLogging
+                  value={incidentData.victims}
+                  isActive={isActive}
+                  reasoning="Human posture detection identifies 2 individuals on the ground."
+                />
+              </div>
             </div>
+
             <div className="col-span-2">
               <span className="text-muted-foreground">Situation:</span>
-              <p className="text-sm">
-                {isActive ? (
-                  incidentData.situation
-                ) : (
-                  <span className="text-muted-foreground">-</span>
-                )}
-              </p>
+              <div className="col-span-2 flex items-center gap-2">
+                <p className="text-sm">
+                  {isActive ? (
+                    incidentData.situation
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </p>
+                <AssessmentValueLogging
+                  value={incidentData.situation}
+                  isActive={isActive}
+                  reasoning="Human posture detection identifies 2 individuals on the ground."
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -311,6 +416,6 @@ export function LiveIncidentSummary({
           )}
         </div>
       </CardContent>
-    </Card>
+    </Card >
   );
 }

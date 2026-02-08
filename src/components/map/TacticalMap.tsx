@@ -192,6 +192,8 @@ function MapContent({
               ? Math.ceil(route.legs[0].duration.value / 60)
               : suggestion.estimatedETA;
 
+            // console.log(`🗺️ ${suggestion.resource.agency} - Directions API ETA: ${realEtaMinutes} mins`);
+
             const newMovingResource: MovingResource = {
               id: resourceId,
               suggestion,

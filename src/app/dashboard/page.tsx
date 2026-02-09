@@ -69,13 +69,13 @@ export default function DashboardPage() {
   // Generate suggestions when incident changes
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (!activeIncident || !emergencyServices) return;
-      const result = await generateResourceSuggestions(activeIncident, emergencyServices);
+      if (!activeIncident || !emergencyServices || !callerLocation) return; // Will not suggest resources without caller location
+      const result = await generateResourceSuggestions(activeIncident, emergencyServices, callerLocation ?? null);
       setSuggestions(result);
     };
 
     fetchSuggestions();
-  }, [activeIncident, emergencyServices]);
+  }, [activeIncident, emergencyServices, callerLocation]);
 
   // Play notification sound
   const playNotificationSound = () => {

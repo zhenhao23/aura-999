@@ -100,6 +100,22 @@ export function LiveIncidentSummary({
     return () => unsubscribe();
   }, [callId]);
 
+  // Listen for call end and finalize incident location
+  // useEffect(() => {
+  //   if (!callId) {
+  //     // Call has ended - update location if still "Determining..."
+  //     setIncidentData((prev) => ({
+  //       ...prev,
+  //       location:
+  //         prev.location === "Determining..." || prev.location === "Unknown"
+  //           ? callerLocation?.address || callerLocation?.coords.latitude
+  //             ? `${callerLocation.coords.latitude.toFixed(4)}, ${callerLocation.coords.longitude.toFixed(4)}`
+  //             : "Unknown"
+  //           : prev.location,
+  //     }));
+  //   }
+  // }, [callId, callerLocation]);
+
   // Listen for visual hazards
   useEffect(() => {
     if (!callId) {

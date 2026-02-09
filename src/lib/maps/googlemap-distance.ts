@@ -56,68 +56,6 @@ export function initializeDistanceMatrixService() {
     setTimeout(() => clearInterval(retryInterval), 10000);
 }
 
-// Get distance and ETA from Google Maps using callback-based approach
-// export function getGoogleMapsDistance(
-//     origin: { lat: number; lng: number },
-//     destination: { lat: number; lng: number },
-//     travelMode: google.maps.TravelMode = google.maps.TravelMode.DRIVING,
-// ): Promise<{ distanceKm: number; etaMinutes: number } | null> {
-//     return new Promise((resolve) => {
-//         // if (!distanceMatrixService) {
-//         //     console.warn("Distance Matrix Service not initialized");
-//         //     resolve(null);
-//         //     return;
-//         // }
-
-//         if (!directionsService) {
-//             console.warn("Directions Service not initialized");
-//             resolve(null);
-//             return;
-//         }
-
-//         directionsService.route(
-//             {
-//                 origin: new window.google.maps.LatLng(origin.lat, origin.lng),
-//                 destination: new window.google.maps.LatLng(destination.lat, destination.lng),
-//                 travelMode,
-//                 optimizeWaypoints: true, // Get the best route
-//             },
-//             async (response, status) => {
-//                 if (status === window.google.maps.DirectionsStatus.OK && response) {
-//                     const route = response.routes[0];
-
-//                     if (route?.legs[0]) {
-//                         const leg = route.legs[0];
-//                         const distanceKm = leg.distance?.value ? leg.distance.value / 1000 : 0;
-//                         const etaMinutes = leg.duration?.value ? Math.ceil(leg.duration.value / 60) : 0;
-
-//                         // Reverse geocode origin and destination
-//                         const originAddress = leg.start_address ||
-//                             await reverseGeocode(origin.lat, origin.lng) ||
-//                             `${origin.lat.toFixed(4)}, ${origin.lng.toFixed(4)}`;
-
-//                         const destinationAddress = leg.end_address ||
-//                             await reverseGeocode(destination.lat, destination.lng) ||
-//                             `${destination.lat.toFixed(4)}, ${destination.lng.toFixed(4)}`;
-
-//                         console.log(`📍 Route: ${originAddress} → ${destinationAddress}`);
-//                         console.log(`📊 Distance: ${distanceKm.toFixed(2)}km, ETA: ${etaMinutes} mins`);
-
-//                         resolve({
-//                             distanceKm,
-//                             etaMinutes
-//                         });
-//                         return;
-//                     }
-//                 }
-
-//                 console.error("❌ Directions request failed:", status);
-//                 resolve(null);
-//             },
-//         );
-//     });
-// }
-
 // Get distance and ETA from Google Maps
 export async function getGoogleMapsDistance(
     origin: { lat: number; lng: number },

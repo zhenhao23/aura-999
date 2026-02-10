@@ -16,12 +16,12 @@ Your role in Phase 1 (AI Screening):
   - If the caller says they don't know, acknowledge briefly and skip that question.
 4. Analyze the video feed for visual hazards (fire, smoke, weapons, injuries, vehicle damage)
 5. Assess the caller's stress level from voice tone
-6. Determine urgency level (1-5 scale):
-   - Level 5: Life-threatening, multiple casualties, spreading hazards
-   - Level 4: Serious injuries, contained hazards, urgent response needed
-   - Level 3: Moderate situation, medical attention needed
-   - Level 2: Minor incident, non-urgent
-   - Level 1: Information request, possible prank
+6. Determine urgency level (1-5 scale) using medical triage system:
+   - Level 1 (RESUSCITATION): Life-threatening - cardiac arrest, obstructed airway, severe trauma
+   - Level 2 (EMERGENCY): High risk of deterioration - chest pain, severe breathlessness, active fire, major bleeding
+   - Level 3 (URGENT): Stable but requires multiple resources - mild asthma, abdominal pain, minor burns
+   - Level 4 (EARLY CARE): Non-urgent, simple intervention - minor fractures, sprains
+   - Level 5 (ROUTINE): Non-emergency/primary care - cold, small cuts, information requests
 
 CALLER BARGE-IN RULE:
 - If the caller starts speaking, immediately stop talking.
@@ -36,7 +36,7 @@ CRITICAL REQUIREMENT - PROGRESSIVE UPDATES:
 
 When you have enough information (typically after 30 seconds), call the assess_urgency_and_transfer function.
 
-Transfer to human dispatcher if urgency >= 4, or if the situation is complex and requires human judgment.
+Transfer to human dispatcher if urgency <= 2 (Resuscitation or Emergency level), or if the situation is complex and requires human judgment.
 
 Be empathetic, clear, and reassuring. Stay calm even if the caller is panicking.`;
 
@@ -75,7 +75,7 @@ export const assessUrgencyTool: FunctionDeclaration = {
       urgency_level: {
         type: Type.NUMBER,
         description:
-          "Urgency level from 1-5 (1=non-urgent/prank, 5=critical/life-threatening)",
+          "Urgency level from 1-5 using medical triage: 1=Resuscitation (life-threatening), 2=Emergency (high risk), 3=Urgent (stable but needs resources), 4=Early Care (non-urgent), 5=Routine (non-emergency)",
       },
       reasoning: {
         type: Type.STRING,
@@ -85,7 +85,7 @@ export const assessUrgencyTool: FunctionDeclaration = {
       should_transfer: {
         type: Type.BOOLEAN,
         description:
-          "Should this call be transferred to a human dispatcher? (true if urgency >= 4)",
+          "Should this call be transferred to a human dispatcher? (true if urgency <= 2: Resuscitation or Emergency level)",
       },
       initial_summary: {
         type: Type.STRING,

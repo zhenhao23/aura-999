@@ -34,16 +34,18 @@ export function IncomingCallAlert({
   onReject,
 }: IncomingCallAlertProps) {
   const getUrgencyColor = (level: number) => {
-    if (level >= 4) return "bg-red-600";
-    if (level >= 3) return "bg-orange-600";
-    return "bg-yellow-600";
+    if (level <= 1) return "bg-red-600";
+    if (level <= 2) return "bg-orange-600";
+    if (level <= 3) return "bg-yellow-600";
+    return "bg-green-600";
   };
 
   const getUrgencyLabel = (level: number) => {
-    if (level >= 4) return "CRITICAL";
-    if (level >= 3) return "HIGH";
-    if (level >= 2) return "MEDIUM";
-    return "LOW";
+    if (level <= 1) return "RESUSCITATION";
+    if (level <= 2) return "EMERGENCY";
+    if (level <= 3) return "URGENT";
+    if (level <= 4) return "EARLY CARE";
+    return "ROUTINE";
   };
 
   // Use assessment data if available, otherwise use progress data or defaults

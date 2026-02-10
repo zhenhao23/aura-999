@@ -57,9 +57,9 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 
 ### Phase 1: AI Screening Layer (First Contact)
 
-![AI Screening](/public/screenshots/AI-Screening.png)
-
 **Duration**: < 2 minutes | **AI Role**: Active Dispatcher
+
+![AI Screening](/public/screenshots/AI-Screening.png)
 
 **Process Flow:**
 
@@ -89,9 +89,9 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 
 ### Phase 2: Department Dispatcher Layer (Human Oversight)
 
-![Dispatcher Interface](/public/screenshots/Dispatcher-Interface.png)
-
 **AI Role**: Shadow Mode (Listen-only, non-speaking)
+
+![Dispatcher Interface](/public/screenshots/Dispatcher-Interface.png)
 
 **Dispatcher Interface:**
 
@@ -152,13 +152,14 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 - "Green wave" traffic light coordination
 - Priority routing for ambulances
 
-![Incident Log 1](/public/screenshots/Incident-Log-1.png)
-
 **Post-Incident:**
 
 - AI generates comprehensive incident log
 - Multi-purpose: Police reports, insurance claims, internal analytics
 - Includes: Timeline, transcript, hazards, resource response times
+
+![Incident Log 1](/public/screenshots/Incident-Log-1.png)
+![Incident Log 2](/public/screenshots/Incident-Log-2.png)
 
 ---
 

@@ -57,6 +57,8 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 
 ### Phase 1: AI Screening Layer (First Contact)
 
+![AI Screening](/public/screenshots/AI-Screening.png)
+
 **Duration**: < 2 minutes | **AI Role**: Active Dispatcher
 
 **Process Flow:**
@@ -86,6 +88,8 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 ---
 
 ### Phase 2: Department Dispatcher Layer (Human Oversight)
+
+![Dispatcher Interface](/public/screenshots/Dispatcher-Interface.png)
 
 **AI Role**: Shadow Mode (Listen-only, non-speaking)
 
@@ -147,6 +151,8 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 - STARS (Smart Traffic Analytics & Recognition System)
 - "Green wave" traffic light coordination
 - Priority routing for ambulances
+
+![Incident Log 1](/public/screenshots/Incident-Log-1.png)
 
 **Post-Incident:**
 

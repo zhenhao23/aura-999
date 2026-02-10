@@ -167,13 +167,13 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 
 ### 1. Priority Level Logic Matrix
 
-| Level | Category Name | Clinical Status                                                            | Auto-Transfer | Example                                  |
-| :---- | :------------ | :------------------------------------------------------------------------- | :------------ | :--------------------------------------- |
-| 1     | Resuscitation | Life-threatening (e.g., cardiac arrest, obstructed airway)                 | ✅ Yes        | Cardiac arrest, severe trauma            |
-| 2     | Emergency     | High risk of deterioration (e.g., chest pain, severe breathlessness)       | ✅ Yes        | Chest pain, severe bleeding, active fire |
-| 3     | Urgent        | Stable but requires multiple resources (e.g., mild asthma, abdominal pain) | ❌ No         | Mild asthma, abdominal pain, minor burns |
-| 4     | Early Care    | Non-urgent; requires simple intervention (e.g., minor fractures)           | ❌ No         | Minor fractures, sprains                 |
-| 5     | Routine       | Non-emergency/primary care (e.g., cold, small cuts, prescription refills)  | ❌ No         | Cold, small cuts, information requests   |
+| Level | Category Name | Clinical Status                          | Auto-Transfer | Example                                  |
+| :---- | :------------ | :--------------------------------------- | :------------ | :--------------------------------------- |
+| 1     | Resuscitation | Life-threatening                         | ✅ Yes        | Cardiac arrest, severe trauma            |
+| 2     | Emergency     | High risk of deterioration               | ✅ Yes        | Chest pain, severe bleeding, active fire |
+| 3     | Urgent        | Stable but requires multiple resources   | ❌ No         | Mild asthma, abdominal pain, minor burns |
+| 4     | Early Care    | Non-urgent; requires simple intervention | ❌ No         | Minor fractures, sprains                 |
+| 5     | Routine       | Non-emergency/primary care               | ❌ No         | Cold, small cuts, information requests   |
 
 **Decision Factors:**
 

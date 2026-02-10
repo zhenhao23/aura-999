@@ -22,6 +22,8 @@ import {
   VolumeX,
   Mic,
   MicOff,
+  Video,
+  VideoOff,
   PhoneOff,
   MessageSquare,
   SwitchCamera,
@@ -39,6 +41,7 @@ export default function CallerPage() {
   const [error, setError] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [isCameraOn, setIsCameraOn] = useState(false);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<
@@ -220,14 +223,9 @@ export default function CallerPage() {
     try {
       setError(null);
 
-      // Get user media (camera + mic) - optimized for low latency
+      // Get user media (mic only by default) - optimized for low latency
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 30, max: 30 }, // Limit to 30fps for efficiency
-        },
+        video: false,
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -277,7 +275,10 @@ export default function CallerPage() {
 
   // Capture video frame and send to AI (optimized for low latency)
   const captureAndSendVideoFrame = () => {
-    if (!videoRef.current || !callId) return;
+    if (!videoRef.current || !callId || !isCameraOn) return;
+
+    const activeStream = streamRef.current;
+    if (!activeStream || activeStream.getVideoTracks().length === 0) return;
 
     const video = videoRef.current;
     const canvas = document.createElement("canvas");
@@ -430,6 +431,73 @@ export default function CallerPage() {
     }
   };
 
+  // Toggle camera on/off
+  const toggleCamera = () => {
+    const stream = streamRef.current;
+    if (!stream) return;
+
+    if (isCameraOn) {
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.stop();
+      }
+
+      if (peerConnectionRef.current) {
+        const sender = peerConnectionRef.current
+          .getSenders()
+          .find((s) => s.track?.kind === "video");
+        if (sender) {
+          sender.replaceTrack(null).catch(console.error);
+        }
+      }
+
+      const audioTrack = stream.getAudioTracks()[0];
+      streamRef.current = audioTrack ? new MediaStream([audioTrack]) : null;
+      if (videoRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+      setIsCameraOn(false);
+      return;
+    }
+
+    navigator.mediaDevices
+      .getUserMedia({
+        video: {
+          facingMode,
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 30 },
+        },
+        audio: false,
+      })
+      .then((newStream) => {
+        const newVideoTrack = newStream.getVideoTracks()[0];
+        if (!newVideoTrack) return;
+
+        if (peerConnectionRef.current) {
+          const sender = peerConnectionRef.current
+            .getSenders()
+            .find((s) => s.track?.kind === "video");
+          if (sender) {
+            sender.replaceTrack(newVideoTrack).catch(console.error);
+          }
+        }
+
+        const audioTrack = stream.getAudioTracks()[0];
+        streamRef.current = new MediaStream(
+          audioTrack ? [audioTrack, newVideoTrack] : [newVideoTrack],
+        );
+        if (videoRef.current) {
+          videoRef.current.srcObject = streamRef.current;
+        }
+        setIsCameraOn(true);
+      })
+      .catch((err) => {
+        console.error("Error enabling camera:", err);
+        setError("Failed to turn on camera");
+      });
+  };
+
   // Toggle speaker (note: speaker control is limited in browsers)
   const toggleSpeaker = () => {
     setIsSpeakerOn(!isSpeakerOn);
@@ -440,6 +508,11 @@ export default function CallerPage() {
   // Switch camera between front and back
   const switchCamera = async () => {
     if (!streamRef.current || !isCallActive) return;
+
+    if (!isCameraOn) {
+      setFacingMode((prev) => (prev === "user" ? "environment" : "user"));
+      return;
+    }
 
     try {
       const newFacingMode = facingMode === "user" ? "environment" : "user";
@@ -556,6 +629,7 @@ export default function CallerPage() {
       setCallId(null);
       setConnectionState("new");
       setIsMuted(false);
+      setIsCameraOn(false);
       setCurrentPhase("ai-screening");
       hasSetRemoteDescriptionRef.current = false;
       hasInitiatedWebRTCRef.current = false;
@@ -723,6 +797,19 @@ export default function CallerPage() {
               title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+            </button>
+
+            {/* Camera Toggle Button */}
+            <button
+              onClick={toggleCamera}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+                isCameraOn
+                  ? "bg-white/20 hover:bg-white/30 text-white"
+                  : "bg-white hover:bg-white/90 text-gray-900"
+              }`}
+              title={isCameraOn ? "Camera On" : "Camera Off"}
+            >
+              {isCameraOn ? <Video size={24} /> : <VideoOff size={24} />}
             </button>
 
             {/* End Call Button */}

@@ -45,30 +45,26 @@ We are developing the first AI-driven Emergency Dispatch Layer: an agentic syste
 
 ### Prerequisites
 
-- **Node.js** 18.17 or later
-- **Firebase Account** (free tier works)
-- **Google Cloud Account** with billing enabled
-- **API Keys**:
-  - Gemini API Key (from Google AI Studio)
-  - Google Maps API Key
+- Node.js 18+
+- Gemini API Key (from Google AI Studio)
+- Google Maps API Key
+- Firebase API Key
 
-### Installation
-
-1. **Clone the repository**:
+### Quick Start
 
 ```bash
+# Clone and install
 git clone https://github.com/yourusername/whateverclicks.git
 cd whateverclicks
-```
-
-2. **Install dependencies**:
-
-```bash
 npm install
+
+# Run development server
+npm run dev
 ```
 
-3. **Set up environment variables**:
-   Create `.env.local` in the root directory:
+### Set up environment variables
+
+Create `.env.local` in the root directory:
 
 ```env
 # Gemini AI
@@ -82,37 +78,6 @@ NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
-NEXT_PUBLIC_FIREBASE_APP_ID=1:123456789:web:abcdef
-```
-
-4. **Configure Firebase**:
-
-5. **Enable Google Cloud APIs**:
-   - Maps JavaScript API
-   - Geocoding API
-   - Directions API
-
-### Development
-
-Run the development server:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-**Available Routes**:
-
-- `/` - Landing page
-- `/caller` - Caller interface (start here to test AI screening)
-- `/dashboard` - Dispatcher control center
-
-### Build for Production
-
-```bash
-npm run build
-npm run build
-npm start
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```

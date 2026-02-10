@@ -35,8 +35,11 @@ export function useGeminiAIAgent({
   const clientRef = useRef<GeminiLiveClient | null>(null);
   const callIdRef = useRef<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const audioQueueRef = useRef<AudioBuffer[]>([]);
-  const isPlayingRef = useRef(false);
+  const nextPlaybackTimeRef = useRef(0);
+  const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAudioTimeRef = useRef<number>(0);
+  const callSyncedRef = useRef(false);
 
   // Keep callIdRef in sync with callId prop
   useEffect(() => {
@@ -61,16 +64,22 @@ export function useGeminiAIAgent({
 
     client.on("close", () => {
       setIsConnected(false);
+      callSyncedRef.current = false;
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
     });
 
     client.on("error", (error) => {
       console.error("AI Agent error:", error);
+      callSyncedRef.current = false;
     });
 
-    client.on("audio", (audioData) => {
+    client.on("audio", (audioData, sampleRate) => {
       // Only play AI audio in Phase 1 (screening), muted in shadow mode
       if (currentPhase === "ai-screening") {
-        playAudio(audioData);
+        playAudio(audioData, sampleRate);
       }
       // In shadow mode (dispatcher-active), AI output is muted
     });
@@ -86,48 +95,14 @@ export function useGeminiAIAgent({
       await handleToolCall(toolCall);
     });
 
+    client.on("interrupted", () => {
+      stopAllAudio();
+    });
+
     return () => {
       client.disconnect();
     };
   }, []); // Remove 'enabled' dependency
-
-  // Connect to Gemini Live API when call starts
-  const connect = useCallback(
-    async (activeCallId?: string) => {
-      const targetCallId = activeCallId || callId;
-
-      if (!clientRef.current || !targetCallId) {
-        return false;
-      }
-      const config = {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
-        },
-        systemInstruction: {
-          parts: [{ text: PHASE_1_SYSTEM_PROMPT }],
-        },
-        tools: [
-          { functionDeclarations: [assessUrgencyTool, updateAIProgressTool] },
-        ],
-      };
-
-      console.log(
-        "🤖 Connecting to Gemini AI with tools:",
-        config.tools[0].functionDeclarations.map((t) => t.name),
-      );
-      const success = await clientRef.current.connect(config);
-      if (success && targetCallId) {
-        console.log("✅ AI connected successfully for call:", targetCallId);
-        await updateCallPhase(targetCallId, "ai-screening");
-        setCurrentPhase("ai-screening");
-      } else {
-        console.error("❌ AI connection failed");
-      }
-      return success;
-    },
-    [callId],
-  );
 
   // Enter shadow mode - AI observes silently
   const enterShadowMode = useCallback(() => {
@@ -153,17 +128,110 @@ export function useGeminiAIAgent({
     setCurrentPhase("dispatcher-active");
   }, []);
 
+
   // Disconnect from Gemini
   const disconnect = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+    callSyncedRef.current = false;
     if (clientRef.current) {
       clientRef.current.disconnect();
     }
   }, []);
 
+  // Start heartbeat to prevent websocket timeout
+  const startHeartbeat = useCallback(() => {
+    // Clear existing heartbeat
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+    }
+
+    // Initialize last audio time if not set
+    if (lastAudioTimeRef.current === 0) {
+      lastAudioTimeRef.current = Date.now();
+    }
+
+    // Send silent audio every 5 seconds if no real audio was sent
+    heartbeatIntervalRef.current = setInterval(() => {
+      const timeSinceLastAudio = Date.now() - lastAudioTimeRef.current;
+      
+      // If no audio sent in last 3 seconds, send silent frame (320 bytes = 20ms at 16kHz)
+      if (timeSinceLastAudio > 3000 && clientRef.current?.isConnected()) {
+        const silentFrame = new ArrayBuffer(320);
+        const base64Silent = btoa(
+          String.fromCharCode(...new Uint8Array(silentFrame))
+        );
+        clientRef.current.sendAudio(base64Silent);
+        console.log("💓 Heartbeat: sent silent audio frame");
+      }
+    }, 5000); // Check every 5 seconds
+
+    console.log("💓 Heartbeat started");
+  }, []);
+
+  // Connect to Gemini Live API when call starts
+  const syncCallIfNeeded = useCallback(
+    async (activeCallId?: string) => {
+      if (!activeCallId || callSyncedRef.current) return;
+      await updateCallPhase(activeCallId, "ai-screening");
+      setCurrentPhase("ai-screening");
+      callSyncedRef.current = true;
+      startHeartbeat();
+    },
+    [startHeartbeat],
+  );
+
+  const connect = useCallback(
+    async (activeCallId?: string, options?: { skipCallSync?: boolean }) => {
+      const targetCallId = activeCallId || callId;
+
+      if (!clientRef.current || !targetCallId) {
+        if (!clientRef.current || !options?.skipCallSync) {
+          return false;
+        }
+      }
+      const config = {
+        responseModalities: [Modality.AUDIO],
+        systemInstruction: {
+          parts: [{ text: PHASE_1_SYSTEM_PROMPT }],
+        },
+        tools: [
+          { functionDeclarations: [assessUrgencyTool, updateAIProgressTool] },
+        ],
+      };
+
+      console.log(
+        "🤖 Connecting to Gemini AI with tools:",
+        config.tools[0].functionDeclarations.map((t) => t.name),
+      );
+      if (!clientRef.current) return false;
+      const success = await clientRef.current.connect(config);
+      if (success) {
+        if (targetCallId && !options?.skipCallSync) {
+          console.log("✅ AI connected successfully for call:", targetCallId);
+          await syncCallIfNeeded(targetCallId);
+        }
+        return true;
+      }
+      console.error("❌ AI connection failed");
+      return false;
+    },
+    [callId, syncCallIfNeeded],
+  );
+
+  const preconnect = useCallback(async () => {
+    if (clientRef.current?.isConnected()) return true;
+    return connect(undefined, { skipCallSync: true });
+  }, [connect]);
+
   // Send audio to AI
   const sendAudio = useCallback((audioData: string) => {
-    if (clientRef.current?.isConnected()) {
-      clientRef.current.sendAudio(audioData);
+    if (!clientRef.current) return;
+    clientRef.current.sendAudio(audioData);
+    if (clientRef.current.isConnected()) {
+      lastAudioTimeRef.current = Date.now();
     }
   }, []);
 
@@ -318,13 +386,15 @@ export function useGeminiAIAgent({
   };
 
   // Play audio from AI (Phase 1 only)
-  const playAudio = async (audioData: ArrayBuffer) => {
+  const playAudio = async (audioData: ArrayBuffer, sampleRate?: number) => {
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+        audioContextRef.current = new AudioContext({ latencyHint: "interactive" });
       }
 
       const audioCtx = audioContextRef.current;
+      const inputSampleRate = sampleRate || 24000;
+      const outputSampleRate = audioCtx.sampleRate;
 
       // Gemini sends PCM16 audio, we need to convert it to Float32
       const pcm16Data = new Int16Array(audioData);
@@ -335,43 +405,85 @@ export function useGeminiAIAgent({
         float32Data[i] = pcm16Data[i] / 32768.0;
       }
 
+      const resampledData =
+        inputSampleRate !== outputSampleRate
+          ? resampleLinear(float32Data, inputSampleRate, outputSampleRate)
+          : float32Data;
+
       // Create audio buffer
       const audioBuffer = audioCtx.createBuffer(
         1, // mono
-        float32Data.length,
-        24000, // sample rate
+        resampledData.length,
+        outputSampleRate,
       );
 
       // Copy data to buffer
-      audioBuffer.getChannelData(0).set(float32Data);
+      audioBuffer.getChannelData(0).set(resampledData);
 
-      audioQueueRef.current.push(audioBuffer);
-
-      if (!isPlayingRef.current) {
-        playNextInQueue();
-      }
+      schedulePlayback(audioBuffer);
     } catch (error) {
       console.error("❌ Error playing audio:", error);
     }
   };
 
-  const playNextInQueue = () => {
-    if (!audioContextRef.current || audioQueueRef.current.length === 0) {
-      isPlayingRef.current = false;
-      return;
-    }
+  const schedulePlayback = (audioBuffer: AudioBuffer) => {
+    if (!audioContextRef.current) return;
 
-    isPlayingRef.current = true;
-    const audioBuffer = audioQueueRef.current.shift()!;
-    const source = audioContextRef.current.createBufferSource();
+    const audioCtx = audioContextRef.current;
+    const now = audioCtx.currentTime;
+    const minBuffer = 0.01;
+    if (nextPlaybackTimeRef.current < now - 0.2) {
+      nextPlaybackTimeRef.current = now;
+    }
+    const startTime = Math.max(nextPlaybackTimeRef.current, now + minBuffer);
+
+    const source = audioCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(audioContextRef.current.destination);
+    source.connect(audioCtx.destination);
+
+    activeSourcesRef.current.push(source);
 
     source.onended = () => {
-      playNextInQueue();
+      activeSourcesRef.current = activeSourcesRef.current.filter(
+        (node) => node !== source,
+      );
     };
 
-    source.start();
+    source.start(startTime);
+    nextPlaybackTimeRef.current = startTime + audioBuffer.duration;
+  };
+
+  const stopAllAudio = () => {
+    for (const source of activeSourcesRef.current) {
+      try {
+        source.stop();
+      } catch {
+        // ignore
+      }
+    }
+    activeSourcesRef.current = [];
+    nextPlaybackTimeRef.current = 0;
+  };
+
+  const resampleLinear = (
+    input: Float32Array,
+    inputRate: number,
+    outputRate: number,
+  ) => {
+    if (inputRate === outputRate) return input;
+    const ratio = outputRate / inputRate;
+    const outputLength = Math.max(1, Math.round(input.length * ratio));
+    const output = new Float32Array(outputLength);
+
+    for (let i = 0; i < outputLength; i++) {
+      const sourceIndex = i / ratio;
+      const index0 = Math.floor(sourceIndex);
+      const index1 = Math.min(index0 + 1, input.length - 1);
+      const frac = sourceIndex - index0;
+      output[i] = input[index0] * (1 - frac) + input[index1] * frac;
+    }
+
+    return output;
   };
 
   return {
@@ -379,6 +491,7 @@ export function useGeminiAIAgent({
     currentPhase,
     aiTranscript,
     connect,
+    preconnect,
     disconnect,
     enterShadowMode,
     sendAudio,

@@ -13,6 +13,12 @@ import {
   type CallData,
 } from "@/lib/firebase/signaling";
 
+interface TranscriptLine {
+  text: string;
+  timestamp: number;
+  speaker?: string;
+}
+
 interface LiveFeedProps {
   videoUrl?: string;
   transcript?: string;
@@ -29,12 +35,63 @@ export function LiveFeed({
   const [connectionState, setConnectionState] = useState<string>("new");
   const [hasRemoteStream, setHasRemoteStream] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [currentTranscriptLine, setCurrentTranscriptLine] = useState<TranscriptLine | null>(null);
+  const [allTranscriptLines, setAllTranscriptLines] = useState<TranscriptLine[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<WebRTCPeerConnection | null>(null);
   const unsubscribersRef = useRef<Array<() => void>>([]);
   const isAnsweringRef = useRef(false);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const transcriptTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+
+  // Parse and manage transcript
+  useEffect(() => {
+    if (!transcript) {
+      setAllTranscriptLines([]);
+      setCurrentTranscriptLine(null);
+      return;
+    }
+
+    // If transcript is an array of objects
+    if (Array.isArray(transcript)) {
+      setAllTranscriptLines(transcript);
+    } else if (typeof transcript === "string") {
+      // If transcript is a string, convert to single line
+      const lines = transcript.split("\n").filter((line) => line.trim());
+      const parsedLines: TranscriptLine[] = lines.map((line, idx) => ({
+        text: line,
+        timestamp: idx * 2000, // Assume 2 seconds per line
+        speaker: "Caller",
+      }));
+      setAllTranscriptLines(parsedLines);
+    }
+  }, [transcript]);
+
+  // Update current subtitle based on video playback (if available)
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || allTranscriptLines.length === 0) return;
+
+    const handleTimeUpdate = () => {
+      const currentTime = video.currentTime * 1000; // Convert to ms
+
+      // Find the current line based on timestamp
+      const currentLine = allTranscriptLines.find((line, idx) => {
+        const nextLine = allTranscriptLines[idx + 1];
+        return (
+          currentTime >= line.timestamp &&
+          (!nextLine || currentTime < nextLine.timestamp)
+        );
+      });
+
+      setCurrentTranscriptLine(currentLine || null);
+    };
+
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    return () => video.removeEventListener("timeupdate", handleTimeUpdate);
+  }, [allTranscriptLines]);
 
   // Answer call when activeCallId is provided from parent
   useEffect(() => {
@@ -171,6 +228,10 @@ export function LiveFeed({
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
       }
+
+      if (transcriptTimeoutRef.current) {
+        clearTimeout(transcriptTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -198,13 +259,30 @@ export function LiveFeed({
       </CardHeader>
       <CardContent className="space-y-3 pt-3">
         {/* Video Player */}
-        <div className="w-3/4 mx-auto aspect-[9/16] bg-black rounded-lg overflow-hidden relative">
+        <div className="w-3/4 mx-auto aspect-9/16 bg-black rounded-lg overflow-hidden relative">
           <video
             ref={videoRef}
             autoPlay
             playsInline
             className="w-full h-full object-cover"
           />
+
+          {/* Subtitle Display at Bottom */}
+          {currentTranscriptLine && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 animate-in fade-in duration-200">
+              <div className="text-center">
+                {currentTranscriptLine.speaker && (
+                  <p className="text-xs text-slate-400 mb-1">
+                    {currentTranscriptLine.speaker}
+                  </p>
+                )}
+                <p className="text-sm font-medium text-white leading-snug">
+                  {currentTranscriptLine.text}
+                </p>
+              </div>
+            </div>
+          )}
+
           {!externalCallId && !videoUrl && (
             <div className="absolute inset-0 flex items-center justify-center text-white">
               <p className="text-sm text-center px-4">
@@ -218,6 +296,29 @@ export function LiveFeed({
             </div>
           )}
         </div>
+
+        {/* Transcript Timeline/History */}
+        {/* {allTranscriptLines.length > 0 && (
+          <div className="mt-2 space-y-1 max-h-24 overflow-y-auto bg-slate-900/50 rounded-lg p-2 border border-slate-800">
+            <p className="text-xs font-semibold text-slate-400 uppercase mb-2">
+              Transcript History
+            </p>
+            <div className="space-y-1">
+              {allTranscriptLines.map((line, idx) => (
+                <div
+                  key={idx}
+                  className={`text-xs p-1 rounded transition-colors ${currentTranscriptLine?.text === line.text
+                    ? "bg-purple-600/40 text-purple-200 border-l-2 border-purple-500"
+                    : "text-slate-400 hover:text-slate-300"
+                    }`}
+                >
+                  <span className="font-semibold">{line.speaker || "Caller"}:</span>{" "}
+                  {line.text}
+                </div>
+              ))}
+            </div>
+          </div>
+        )} */}
 
         {/* Active Call Controls */}
         {externalCallId && (
@@ -241,14 +342,14 @@ export function LiveFeed({
         )}
 
         {/* Live Transcript (Future) */}
-        {transcript && (
+        {/* {transcript && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm">Live Transcript</h4>
             <div className="bg-muted rounded-lg p-3">
               <p className="text-sm">{transcript}</p>
             </div>
           </div>
-        )}
+        )} */}
       </CardContent>
     </Card>
   );

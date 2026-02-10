@@ -1,6 +1,8 @@
 import { Resource, ResourceAllocationSuggestion, Station } from "@/types/resource";
 import { Incident } from "@/types/incident";
 import { STATIONS, getNearestStation } from "@/data/stations";
+import { getGoogleMapsDistance } from "./maps/googlemap-distance";
+import { CallerLocation } from "@/lib/firebase/signaling";
 
 // Calculate estimated time of arrival based on distance
 export function calculateETA(distanceKm: number): number {
@@ -38,10 +40,12 @@ function toRad(degrees: number): number {
 }
 
 // Generate resource suggestions based on incident
-export function generateResourceSuggestions(
+export async function generateResourceSuggestions(
   incident: Incident,
   availableStations: Station[],
-): ResourceAllocationSuggestion[] {
+  callerLocation: CallerLocation,
+  // ): ResourceAllocationSuggestion[] {
+): Promise<ResourceAllocationSuggestion[]> {
   const suggestions: ResourceAllocationSuggestion[] = [];
 
   // Determine which agencies to involve based on incident category
@@ -69,31 +73,34 @@ export function generateResourceSuggestions(
 
   const requiredResources = agencyMap[incident.category] || [];
 
-  requiredResources.forEach((req, index) => {
+  // requiredResources.forEach((req, index) => {
+  for (const [index, req] of requiredResources.entries()) {
     const station = getNearestStation(
-      incident.location.lat,
-      incident.location.lng,
+      callerLocation?.coords.latitude ?? incident.location.lat,
+      callerLocation?.coords.longitude ?? incident.location.lng,
       req.agency,
       availableStations,
     );
 
     if (station) {
-      const distance = calculateDistance(
-        incident.location.lat,
-        incident.location.lng,
+      // Get real ETA from Google Maps at allocation time
+      const googleResult = await getGoogleMapsDistance(
+        { lat: station.location.lat, lng: station.location.lng },
+        { lat: callerLocation.coords.latitude ?? incident.location.lat, lng: callerLocation.coords.longitude ?? incident.location.lng },
+      );
+
+      if (googleResult) {
+        console.log(`${googleResult.distanceKm}km, ${googleResult.etaMinutes} mins`);
+      }
+
+      const distance = googleResult?.distanceKm ?? calculateDistance(
+        callerLocation?.coords.latitude ?? incident.location.lat,
+        callerLocation?.coords.longitude ?? incident.location.lng,
         station.location.lat,
         station.location.lng,
       );
 
-      // Mock ETA data for demo
-      const mockETA: Record<string, number> = {
-        PDRM: 14, // Police
-        KKM: 13, // Hospital/Medical
-        JBPM: 9, // Fire
-        APM: 12,
-        MMEA: 15,
-      };
-      const eta = mockETA[req.agency] || calculateETA(distance);
+      const eta = googleResult?.etaMinutes ?? calculateETA(distance);
 
       const resource: Resource = {
         id: `res-${req.agency}-${index}`,
@@ -116,7 +123,8 @@ export function generateResourceSuggestions(
         routeDistance: distance,
       });
     }
-  });
+  }
+  // );
 
   return suggestions;
 }

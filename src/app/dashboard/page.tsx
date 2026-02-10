@@ -17,6 +17,7 @@ import {
 } from "@/lib/gemini/translator";
 import { MOCK_INCIDENTS } from "@/data/mock-incidents";
 import { generateResourceSuggestions } from "@/lib/resource-optimizer";
+import { initializeDistanceMatrixService } from "@/lib/maps/googlemap-distance";
 import { Message, ResourceAllocationSuggestion, Station } from "@/types";
 import {
   listenForIncomingCalls,
@@ -33,9 +34,10 @@ export default function DashboardPage() {
   // Use the first mock incident as the active incident
   const [activeIncident] = useState(MOCK_INCIDENTS[0]);
   const [emergencyServices, setEmergencyServices] = useState<Station[]>([]);
-  const suggestions = useMemo(() => {
-    return generateResourceSuggestions(activeIncident, emergencyServices);
-  }, [activeIncident, emergencyServices]);
+  // const suggestions = useMemo(() => {
+  //   return generateResourceSuggestions(activeIncident, emergencyServices);
+  // }, [activeIncident, emergencyServices]);
+  const [suggestions, setSuggestions] = useState<ResourceAllocationSuggestion[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "msg-1",
@@ -56,8 +58,24 @@ export default function DashboardPage() {
   const [aiProgress, setAIProgress] = useState<AIProgress | null>(null);
   const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
-  const [callerLanguage, setCallerLanguage] =
-    useState<SupportedLanguage>("Malay");
+  const [closeAllTabs, setCloseAllTabs] = useState(false);
+  const [callerLanguage, setCallerLanguage] = useState<SupportedLanguage>("Malay");
+
+  // Initialize Google Maps Distance Matrix once when component mounts
+  useEffect(() => {
+    initializeDistanceMatrixService();
+  }, []);
+
+  // Generate suggestions when incident changes
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!activeIncident || !emergencyServices || !callerLocation) return; // Will not suggest resources without caller location
+      const result = await generateResourceSuggestions(activeIncident, emergencyServices, callerLocation ?? null);
+      setSuggestions(result);
+    };
+
+    fetchSuggestions();
+  }, [activeIncident, emergencyServices, callerLocation]);
 
   // Play notification sound
   const playNotificationSound = () => {
@@ -90,9 +108,9 @@ export default function DashboardPage() {
     let isActive = true;
     const center = callerLocation
       ? {
-          lat: callerLocation.coords.latitude,
-          lng: callerLocation.coords.longitude,
-        }
+        lat: callerLocation.coords.latitude,
+        lng: callerLocation.coords.longitude,
+      }
       : { lat: 2.8994930048635545, lng: 101.6725950816638 };
 
     getEmergencyServices(center.lat, center.lng)
@@ -239,6 +257,10 @@ export default function DashboardPage() {
       !deniedResources.includes(s.resource.id),
   );
 
+  // useEffect(() => {
+  //   console.log("Available Suggestions:", availableSuggestions);
+  // }, [availableSuggestions]);
+
   return (
     <div className="relative h-screen w-full overflow-hidden">
       {/* Background Map */}
@@ -253,14 +275,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Floating Incident Log Button */}
-      <div className="absolute top-4 right-4 z-20">
+      {!closeAllTabs && (<div className="absolute top-4 right-4 z-20">
         <Link href="/incident-log">
           <Button className="shadow-lg backdrop-blur-sm bg-primary/90 hover:bg-primary">
             <FileText className="w-4 h-4 mr-2" />
             Incident Log
           </Button>
         </Link>
-      </div>
+      </div>)}
 
       {/* Incoming Call Alert Overlay */}
       {showIncomingAlert && activeCallId && (
@@ -273,12 +295,12 @@ export default function DashboardPage() {
               location={
                 callerLocation
                   ? {
-                      address: callerLocation.address,
-                      coords: {
-                        latitude: callerLocation.coords.latitude,
-                        longitude: callerLocation.coords.longitude,
-                      },
-                    }
+                    address: callerLocation.address,
+                    coords: {
+                      latitude: callerLocation.coords.latitude,
+                      longitude: callerLocation.coords.longitude,
+                    },
+                  }
                   : undefined
               }
               onAccept={handleAcceptCall}
@@ -288,51 +310,64 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Floating Mode Badge - Subtle Corner */}
+      <div className="absolute top-1 left-4 z-20">
+        <button
+          onClick={() => setCloseAllTabs(!closeAllTabs)}
+          className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-slate-900/40 text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 backdrop-blur-sm border border-slate-800/50 transition-all duration-200"
+        >
+          {closeAllTabs ? "📡" : "📞"}
+          <span className="hidden sm:inline">{closeAllTabs ? "Dispatcher" : "Caller"}</span>
+        </button>
+      </div>
+
       {/* Quadrant Grid Overlay */}
-      <div className="absolute inset-0 z-10 grid grid-cols-8 grid-rows-2 gap-4 p-4 pointer-events-none">
-        {/* AI Shadow Mode - Live Incident Summary */}
-        <div className="col-span-2 overflow-auto pointer-events-auto">
-          <LiveIncidentSummary
-            callId={callPhase === "dispatcher-active" ? activeCallId : null}
-            callerLocation={callerLocation}
-          />
-        </div>
+      {!closeAllTabs && (
+        <div className="absolute inset-0 z-10 grid grid-cols-8 grid-rows-2 gap-4 p-4 pointer-events-none">
+          {/* AI Shadow Mode - Live Incident Summary */}
+          <div className="col-span-2 overflow-auto pointer-events-auto">
+            <LiveIncidentSummary
+              callId={callPhase === "dispatcher-active" ? activeCallId : null}
+              callerLocation={callerLocation}
+            />
+          </div>
 
-        <div className="col-span-4 pointer-events-none"></div>
+          <div className="col-span-4 pointer-events-none"></div>
 
-        <div className="col-span-2 overflow-auto pointer-events-auto">
-          <div
-            className={`${availableSuggestions.length === 0 ? "invisible" : ""}`}
-          >
-            <ResourceAllocation
-              suggestions={availableSuggestions}
-              onApprove={handleApprove}
-              onDeny={handleDeny}
+          <div className="col-span-2 overflow-auto pointer-events-auto">
+            <div
+              className={`${availableSuggestions.length === 0 ? "invisible" : ""}`}
+            >
+              <ResourceAllocation
+                suggestions={availableSuggestions}
+                onApprove={handleApprove}
+                onDeny={handleDeny}
+              />
+            </div>
+          </div>
+
+          <div className="col-span-2 overflow-auto pointer-events-auto">
+            <LiveFeed
+              videoUrl={activeIncident.videoUrl}
+              transcript={activeIncident.transcript}
+              activeCallId={
+                callPhase === "dispatcher-active" ? activeCallId : null
+              }
+              onCallEnd={handleCallEnd}
+            />
+          </div>
+
+          <div className="col-span-4 pointer-events-none"></div>
+
+          <div className="col-span-2 overflow-auto pointer-events-auto">
+            <UniversalComms
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              callerLanguage={callerLanguage}
             />
           </div>
         </div>
-
-        <div className="col-span-2 overflow-auto pointer-events-auto">
-          <LiveFeed
-            videoUrl={activeIncident.videoUrl}
-            transcript={activeIncident.transcript}
-            activeCallId={
-              callPhase === "dispatcher-active" ? activeCallId : null
-            }
-            onCallEnd={handleCallEnd}
-          />
-        </div>
-
-        <div className="col-span-4 pointer-events-none"></div>
-
-        <div className="col-span-2 overflow-auto pointer-events-auto">
-          <UniversalComms
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            callerLanguage={callerLanguage}
-          />
-        </div>
-      </div>
+      )}
     </div>
   );
 }

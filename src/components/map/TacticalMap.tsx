@@ -192,6 +192,8 @@ function MapContent({
               ? Math.ceil(route.legs[0].duration.value / 60)
               : suggestion.estimatedETA;
 
+            // console.log(`🗺️ ${suggestion.resource.agency} - Directions API ETA: ${realEtaMinutes} mins`);
+
             const newMovingResource: MovingResource = {
               id: resourceId,
               suggestion,
@@ -399,36 +401,6 @@ function MapContent({
           />
         </AdvancedMarker>
       )}
-
-      {/* Station Markers */}
-      {/* {STATIONS.map((station) => (
-        <AdvancedMarker
-          key={station.id}
-          position={{ lat: station.location.lat, lng: station.location.lng }}
-        >
-          <Pin
-            background={getAgencyColor(station.agency)}
-            borderColor="#fff"
-            glyphColor="#fff"
-            scale={0.8}
-          />
-        </AdvancedMarker>
-      ))} */}
-
-      {/* Emergency Station Markers */}
-      {/* {availableStations?.map((station) => (
-        <AdvancedMarker
-          key={station.id}
-          position={{ lat: station.location.lat, lng: station.location.lng }}
-        >
-          <Pin
-            background={getAgencyColor(station.agency)}
-            borderColor="#fff"
-            glyphColor="#fff"
-            scale={0.8}
-          />
-        </AdvancedMarker>
-      ))} */}
 
       {/* Suggested Station Markers */}
       {suggestions.map((sug) => {

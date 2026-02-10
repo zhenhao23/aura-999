@@ -37,7 +37,9 @@ export default function DashboardPage() {
   // const suggestions = useMemo(() => {
   //   return generateResourceSuggestions(activeIncident, emergencyServices);
   // }, [activeIncident, emergencyServices]);
-  const [suggestions, setSuggestions] = useState<ResourceAllocationSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<
+    ResourceAllocationSuggestion[]
+  >([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "msg-1",
@@ -59,7 +61,8 @@ export default function DashboardPage() {
   const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
   const [closeAllTabs, setCloseAllTabs] = useState(false);
-  const [callerLanguage, setCallerLanguage] = useState<SupportedLanguage>("Malay");
+  const [callerLanguage, setCallerLanguage] =
+    useState<SupportedLanguage>("Malay");
 
   // Initialize Google Maps Distance Matrix once when component mounts
   useEffect(() => {
@@ -70,7 +73,11 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchSuggestions = async () => {
       if (!activeIncident || !emergencyServices || !callerLocation) return; // Will not suggest resources without caller location
-      const result = await generateResourceSuggestions(activeIncident, emergencyServices, callerLocation ?? null);
+      const result = await generateResourceSuggestions(
+        activeIncident,
+        emergencyServices,
+        callerLocation ?? null,
+      );
       setSuggestions(result);
     };
 
@@ -108,9 +115,9 @@ export default function DashboardPage() {
     let isActive = true;
     const center = callerLocation
       ? {
-        lat: callerLocation.coords.latitude,
-        lng: callerLocation.coords.longitude,
-      }
+          lat: callerLocation.coords.latitude,
+          lng: callerLocation.coords.longitude,
+        }
       : { lat: 2.8994930048635545, lng: 101.6725950816638 };
 
     getEmergencyServices(center.lat, center.lng)
@@ -275,14 +282,16 @@ export default function DashboardPage() {
       </div>
 
       {/* Floating Incident Log Button */}
-      {!closeAllTabs && (<div className="absolute top-4 right-4 z-20">
-        <Link href="/incident-log">
-          <Button className="shadow-lg backdrop-blur-sm bg-primary/90 hover:bg-primary">
-            <FileText className="w-4 h-4 mr-2" />
-            Incident Log
-          </Button>
-        </Link>
-      </div>)}
+      {!closeAllTabs && (
+        <div className="absolute top-4 right-4 z-20">
+          <Link href="/incident-log">
+            <Button className="shadow-lg backdrop-blur-sm bg-primary/90 hover:bg-primary">
+              <FileText className="w-4 h-4 mr-2" />
+              Incident Log
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Incoming Call Alert Overlay */}
       {showIncomingAlert && activeCallId && (
@@ -295,12 +304,12 @@ export default function DashboardPage() {
               location={
                 callerLocation
                   ? {
-                    address: callerLocation.address,
-                    coords: {
-                      latitude: callerLocation.coords.latitude,
-                      longitude: callerLocation.coords.longitude,
-                    },
-                  }
+                      address: callerLocation.address,
+                      coords: {
+                        latitude: callerLocation.coords.latitude,
+                        longitude: callerLocation.coords.longitude,
+                      },
+                    }
                   : undefined
               }
               onAccept={handleAcceptCall}
@@ -316,8 +325,10 @@ export default function DashboardPage() {
           onClick={() => setCloseAllTabs(!closeAllTabs)}
           className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-slate-900/40 text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 backdrop-blur-sm border border-slate-800/50 transition-all duration-200"
         >
-          {closeAllTabs ? "📡" : "📞"}
-          <span className="hidden sm:inline">{closeAllTabs ? "Dispatcher" : "Caller"}</span>
+          {closeAllTabs ? "📞" : "📡"}
+          <span className="hidden sm:inline">
+            {closeAllTabs ? "Caller" : "Dispatcher"}
+          </span>
         </button>
       </div>
 

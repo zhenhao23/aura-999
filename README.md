@@ -10,7 +10,7 @@ Our end-to-end workflow transforms emergency response: intelligent triage elimin
 
 ---
 
-## Integration with Malaysia's NG 999 System
+## 🇲🇾 Integration with Malaysia's NG 999 System
 
 WhateverClicks is **designed for seamless integration** with Malaysia's existing National Next Generation 999 Command Centre (NG 999). Our system architecture, protocols, and operational logic closely mirror current emergency dispatch practices to ensure minimal disruption and maximum compatibility.
 

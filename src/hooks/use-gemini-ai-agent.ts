@@ -3,6 +3,7 @@ import { GeminiLiveClient } from "@/lib/gemini/live-client";
 import {
   PHASE_1_SYSTEM_PROMPT,
   PHASE_2_SYSTEM_PROMPT,
+  buildPhase1SystemPrompt,
   assessUrgencyTool,
   updateAIProgressTool,
   updateIncidentFieldTool,
@@ -22,12 +23,20 @@ interface UseGeminiAIAgentProps {
   callId: string | null;
   onTransferRequested: () => void;
   enabled: boolean;
+  location?: {
+    lat: number;
+    lng: number;
+    accuracy?: number;
+    buildingName?: string;
+    address?: string;
+  } | null;
 }
 
 export function useGeminiAIAgent({
   callId,
   onTransferRequested,
   enabled,
+  location,
 }: UseGeminiAIAgentProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<CallPhase>("ai-screening");
@@ -40,6 +49,8 @@ export function useGeminiAIAgent({
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastAudioTimeRef = useRef<number>(0);
   const callSyncedRef = useRef(false);
+  const locationConfirmedRef = useRef(false);  // ← Add this
+  const lastLocationSentRef = useRef<string>("");  // ← Track last location sent
 
   // Keep callIdRef in sync with callId prop
   useEffect(() => {
@@ -156,7 +167,7 @@ export function useGeminiAIAgent({
     // Send silent audio every 5 seconds if no real audio was sent
     heartbeatIntervalRef.current = setInterval(() => {
       const timeSinceLastAudio = Date.now() - lastAudioTimeRef.current;
-      
+
       // If no audio sent in last 3 seconds, send silent frame (320 bytes = 20ms at 16kHz)
       if (timeSinceLastAudio > 3000 && clientRef.current?.isConnected()) {
         const silentFrame = new ArrayBuffer(320);
@@ -242,6 +253,39 @@ export function useGeminiAIAgent({
     }
   }, []);
 
+  // Update system prompt when location changes - BUT ONLY ONCE
+  useEffect(() => {
+    if (!clientRef.current?.isConnected() || !location?.address || currentPhase !== "ai-screening") return;
+
+    // Create location key to detect if location actually changed
+    const locationKey = `${location.lat},${location.lng},${location.address}`;
+
+    // Only update if this is a NEW location (not just a minor GPS drift)
+    if (lastLocationSentRef.current === locationKey) {
+      return; // Same location, don't update
+    }
+
+    console.log("📍 Updating AI with new location:", {
+      lat: location.lat,
+      lng: location.lng,
+      address: location.address,
+      buildingName: location.buildingName,
+      accuracy: location.accuracy,
+    });
+
+    // Update the system prompt with current location
+    clientRef.current.updateConfig({
+      systemInstruction: {
+        parts: [{ text: buildPhase1SystemPrompt(location) }],
+      },
+    });
+
+    // Mark as confirmed and remember this location
+    locationConfirmedRef.current = true;
+    lastLocationSentRef.current = locationKey;
+
+  }, [location, currentPhase]);
+
   // Handle tool calls from AI
   const handleToolCall = async (toolCall: any) => {
     const currentCallId = callIdRef.current;
@@ -261,7 +305,11 @@ export function useGeminiAIAgent({
       // Phase 1: Progressive updates during screening
       if (fc.name === "update_ai_progress") {
         const args = fc.args as any;
-        console.log("📊 AI progress update:", args);
+        console.log("📊 AI progress update:", {
+          name: toolCall.name,
+          args: toolCall.args,
+          currentLocation: location,  // ← Check what's available here
+        });
 
         try {
           // Save progressive update to Firestore

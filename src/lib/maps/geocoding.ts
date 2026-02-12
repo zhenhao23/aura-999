@@ -19,8 +19,10 @@ export async function geocodeAddress(
 export async function reverseGeocode(
   lat: number,
   lng: number,
-): Promise<string | null> {
+  // ): Promise<string | null> {
+): Promise<{ buildingName?: string; fullAddress?: string }> {
   // Placeholder - will integrate with Google Geocoding API
   console.log("Reverse geocoding:", lat, lng);
-  return null;
+  // return null;
+  return {};
 }

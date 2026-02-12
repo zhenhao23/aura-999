@@ -19,6 +19,7 @@ import {
 
 export interface CallerLocation {
   coords: GeoPoint;
+  buildingName?: string;
   address?: string;
   accuracy: number; // in meters
   timestamp: Timestamp;

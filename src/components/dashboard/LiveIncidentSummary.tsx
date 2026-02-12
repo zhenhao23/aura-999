@@ -100,22 +100,6 @@ export function LiveIncidentSummary({
     return () => unsubscribe();
   }, [callId]);
 
-  // Listen for call end and finalize incident location
-  // useEffect(() => {
-  //   if (!callId) {
-  //     // Call has ended - update location if still "Determining..."
-  //     setIncidentData((prev) => ({
-  //       ...prev,
-  //       location:
-  //         prev.location === "Determining..." || prev.location === "Unknown"
-  //           ? callerLocation?.address || callerLocation?.coords.latitude
-  //             ? `${callerLocation.coords.latitude.toFixed(4)}, ${callerLocation.coords.longitude.toFixed(4)}`
-  //             : "Unknown"
-  //           : prev.location,
-  //     }));
-  //   }
-  // }, [callId, callerLocation]);
-
   // Listen for visual hazards
   useEffect(() => {
     if (!callId) {
@@ -419,10 +403,34 @@ export function LiveIncidentSummary({
               <p className="text-xs text-gray-400 mt-1">
                 Accuracy: ±{Math.round(callerLocation.accuracy)}m
               </p>
-              {callerLocation.address && (
-                <p className="text-xs text-gray-300 mt-1">
-                  {callerLocation.address}
-                </p>
+              {callerLocation.buildingName && !callerLocation.address && (
+                <>
+                  {/* Extract building/landmark name (first part before comma) */}
+                  <p className="text-xs text-gray-300 mt-1 font-semibold">
+                    {callerLocation.buildingName}
+                  </p>
+                </>
+              )}
+              {callerLocation.address && !callerLocation.buildingName && (
+                <>
+                  {/* Show full address as secondary info */}
+                  <p className="text-xs text-gray-300 mt-1">
+                    {callerLocation.address}
+                  </p>
+                </>
+              )}
+
+              {callerLocation.address && callerLocation.buildingName && (
+                <>
+                  {/* Extract building/landmark name (first part before comma) */}
+                  <p className="text-xs text-gray-300 mt-1 font-semibold">
+                    {callerLocation.buildingName}
+                  </p>
+                  {/* Show full address as secondary info */}
+                  <p className="text-xs text-gray-500 mt-1">
+                    {callerLocation.address}
+                  </p>
+                </>
               )}
             </div>
           ) : (

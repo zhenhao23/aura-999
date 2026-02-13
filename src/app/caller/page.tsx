@@ -80,6 +80,12 @@ export default function CallerPage() {
   const audioRecorderRef = useRef<SimpleAudioRecorder | null>(null);
   const videoIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isLocationReady, setIsLocationReady] = useState(false);
+  const currentLocationRef = useRef(currentLocation);
+
+  // Keep the Ref updated whenever state changes
+  useEffect(() => {
+    currentLocationRef.current = currentLocation;
+  }, [currentLocation]);
 
   // Track when location is fully ready
   useEffect(() => {
@@ -107,14 +113,13 @@ export default function CallerPage() {
     location: isLocationReady ? currentLocation : null,
   });
 
-
-  useEffect(() => {
-    // Only preconnect AFTER location is fully ready
-    if (isLocationReady && currentLocation?.address) {
-      console.log("🚀 Preconnecting AI with location:", currentLocation.address);
-      void preconnectAI();
-    }
-  }, [preconnectAI, isLocationReady, currentLocation?.address]);
+  // useEffect(() => {
+  //   // Only preconnect if location is ready AND we aren't already connected
+  //   if (isLocationReady && currentLocation?.address && !aiConnected && !isCallActive) {
+  //     console.log("🚀 Preconnecting AI...");
+  //     void preconnectAI();
+  //   }
+  // }, [isLocationReady, currentLocation?.address, aiConnected, isCallActive]);
 
   // Handler for when AI requests transfer to dispatcher
   async function handleDispatcherHandoff() {
@@ -311,6 +316,11 @@ export default function CallerPage() {
 
       // Start location tracking
       startLocationTracking(newCallId);
+
+      while (!currentLocationRef.current?.address) {
+        console.log("Waiting for real data...");
+        await new Promise(res => setTimeout(res, 500));
+      }
 
       // Connect to AI agent
       await connectAI(newCallId);

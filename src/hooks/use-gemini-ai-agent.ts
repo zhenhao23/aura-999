@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { GeminiLiveClient } from "@/lib/gemini/live-client";
 import {
-  PHASE_1_SYSTEM_PROMPT,
+  // PHASE_1_SYSTEM_PROMPT,
   PHASE_2_SYSTEM_PROMPT,
   buildPhase1SystemPrompt,
   assessUrgencyTool,
@@ -49,8 +49,14 @@ export function useGeminiAIAgent({
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastAudioTimeRef = useRef<number>(0);
   const callSyncedRef = useRef(false);
-  const locationConfirmedRef = useRef(false);  // ← Add this
-  const lastLocationSentRef = useRef<string>("");  // ← Track last location sent
+  const isInitialConnectionRef = useRef(true);
+  const lastLocationSentRef = useRef<string>("");
+  const locationRef = useRef(location);
+
+  // Keep the internal ref in sync with the prop
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
 
   // Keep callIdRef in sync with callId prop
   useEffect(() => {
@@ -197,6 +203,8 @@ export function useGeminiAIAgent({
   const connect = useCallback(
     async (activeCallId?: string, options?: { skipCallSync?: boolean }) => {
       const targetCallId = activeCallId || callId;
+      const currentLoc = locationRef.current;
+      const dynamicPrompt = buildPhase1SystemPrompt(currentLoc);
 
       if (!clientRef.current || !targetCallId) {
         if (!clientRef.current || !options?.skipCallSync) {
@@ -206,7 +214,7 @@ export function useGeminiAIAgent({
       const config = {
         responseModalities: [Modality.AUDIO],
         systemInstruction: {
-          parts: [{ text: PHASE_1_SYSTEM_PROMPT }],
+          parts: [{ text: dynamicPrompt }],
         },
         tools: [
           { functionDeclarations: [assessUrgencyTool, updateAIProgressTool] },
@@ -220,10 +228,21 @@ export function useGeminiAIAgent({
       if (!clientRef.current) return false;
       const success = await clientRef.current.connect(config);
       if (success) {
+
+        if (currentLoc?.address) {
+          lastLocationSentRef.current = currentLoc.address;
+        }
+
+        //2 seconds before allowing the useEffect to "update" anything
+        setTimeout(() => {
+          isInitialConnectionRef.current = false;
+        }, 2000);
+
         if (targetCallId && !options?.skipCallSync) {
           console.log("✅ AI connected successfully for call:", targetCallId);
           await syncCallIfNeeded(targetCallId);
         }
+
         return true;
       }
       console.error("❌ AI connection failed");
@@ -255,15 +274,11 @@ export function useGeminiAIAgent({
 
   // Update system prompt when location changes - BUT ONLY ONCE
   useEffect(() => {
-    if (!clientRef.current?.isConnected() || !location?.address || currentPhase !== "ai-screening") return;
+    if (!isConnected || isInitialConnectionRef.current || !location?.address || currentPhase !== "ai-screening") return;
 
-    // Create location key to detect if location actually changed
-    const locationKey = `${location.lat},${location.lng},${location.address}`;
+    const locationKey = `${location.address}`;
 
-    // Only update if this is a NEW location (not just a minor GPS drift)
-    if (lastLocationSentRef.current === locationKey) {
-      return; // Same location, don't update
-    }
+    if (lastLocationSentRef.current === locationKey) return;
 
     console.log("📍 Updating AI with new location:", {
       lat: location.lat,
@@ -274,17 +289,15 @@ export function useGeminiAIAgent({
     });
 
     // Update the system prompt with current location
-    clientRef.current.updateConfig({
+    clientRef.current?.updateConfig({
       systemInstruction: {
         parts: [{ text: buildPhase1SystemPrompt(location) }],
       },
     });
 
-    // Mark as confirmed and remember this location
-    locationConfirmedRef.current = true;
     lastLocationSentRef.current = locationKey;
 
-  }, [location, currentPhase]);
+  }, [location?.address, isConnected, currentPhase]);
 
   // Handle tool calls from AI
   const handleToolCall = async (toolCall: any) => {

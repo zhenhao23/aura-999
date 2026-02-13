@@ -3,7 +3,7 @@ import { FunctionDeclaration, Type } from "@google/genai";
 export const buildPhase1SystemPrompt = (location?: any) => {
   const locationContext = location?.address
     ? `\n\n📍 CALLER LOCATION:\n- Coordinates: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}\n- Building: ${location.buildingName || 'Not identified'}\n- Address: ${location.address}\n- Accuracy: ±${location.accuracy}m`
-    : '';
+    : '\n\n📍 CALLER LOCATION: Currently acquiring GPS fix. DO NOT guess landmarks like KLCC. Ask the caller: "Where is your emergency?';
 
   return `You are an emergency AI dispatcher for Malaysia's integrated emergency response system.
 IMPORTANT - LOCATION CONTEXT:
@@ -54,7 +54,7 @@ Be empathetic, clear, and reassuring. Stay calm even if the caller is panicking.
     `${locationContext}`;
 };
 
-export const PHASE_1_SYSTEM_PROMPT = buildPhase1SystemPrompt();
+// export const PHASE_1_SYSTEM_PROMPT = buildPhase1SystemPrompt();
 
 // export const PHASE_1_SYSTEM_PROMPT = `You are an emergency AI dispatcher for Malaysia's integrated emergency response system.
 // IMPORTANT - LOCATION CONTEXT:

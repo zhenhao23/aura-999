@@ -101,6 +101,8 @@ export default function CallerPage() {
   const {
     isConnected: aiConnected,
     connect: connectAI,
+    // aiTranscript: transcriptAI,
+    interimTranscript,
     preconnect: preconnectAI,
     disconnect: disconnectAI,
     enterShadowMode,
@@ -113,13 +115,13 @@ export default function CallerPage() {
     location: isLocationReady ? currentLocation : null,
   });
 
-  // useEffect(() => {
-  //   // Only preconnect if location is ready AND we aren't already connected
-  //   if (isLocationReady && currentLocation?.address && !aiConnected && !isCallActive) {
-  //     console.log("🚀 Preconnecting AI...");
-  //     void preconnectAI();
-  //   }
-  // }, [isLocationReady, currentLocation?.address, aiConnected, isCallActive]);
+  useEffect(() => {
+    // Only preconnect if location is ready AND we aren't already connected
+    if (isLocationReady && currentLocation?.address && !aiConnected && !isCallActive) {
+      console.log("🚀 Preconnecting AI...");
+      void preconnectAI();
+    }
+  }, [isLocationReady, currentLocation?.address, aiConnected, isCallActive]);
 
   // Handler for when AI requests transfer to dispatcher
   async function handleDispatcherHandoff() {
@@ -224,7 +226,7 @@ export default function CallerPage() {
           const locationData: any = {
             coords: new GeoPoint(latitude, longitude),
             buildingName: address.buildingName || "",
-            address: address.address,
+            address: address.address || "",
             accuracy,
             timestamp: new Date() as any,
             source: "gps" as const,
@@ -907,6 +909,25 @@ export default function CallerPage() {
             <p className="text-center text-green-400 text-sm font-semibold mt-4">
               ✓ Connected to dispatcher
             </p>
+          )}
+        </div>
+      )}
+
+      {isCallActive && (
+        <div className="absolute top-24 left-4 right-4 pointer-events-none">
+          {interimTranscript && (
+            <div className="bg-black/60 backdrop-blur-md p-4 rounded-xl border border-white/20 max-w-lg mx-auto shadow-2xl">
+              <p className="text-white text-sm leading-relaxed">
+                {/* Stable text from the current turn */}
+                {/* <span>{transcriptAI}</span> */}
+
+                {/* Live active speech currently being processed */}
+                <span className="text-gray-300 ml-1">
+                  {interimTranscript}
+                  {interimTranscript && <span className="animate-pulse">|</span>}
+                </span>
+              </p>
+            </div>
           )}
         </div>
       )}

@@ -133,6 +133,14 @@ export class GeminiLiveClient extends EventEmitter<GeminiLiveClientEvents> {
     if (message.serverContent) {
       const content = message.serverContent;
 
+      if (content?.inputTranscription) {
+        const text = content.inputTranscription.text;
+        const isFinal = content.inputTranscription.isFinal;
+        if (!content.modelTurn?.parts) {
+          this.emit("transcript", text || "", isFinal || false);
+        }
+      }
+
       // Handle audio
       if (content.modelTurn?.parts) {
         for (const part of content.modelTurn.parts) {
@@ -142,9 +150,6 @@ export class GeminiLiveClient extends EventEmitter<GeminiLiveClientEvents> {
             const rateMatch = mimeType.match(/rate=(\d+)/);
             const sampleRate = rateMatch ? Number(rateMatch[1]) : undefined;
             this.emit("audio", audioData, sampleRate);
-          }
-          if (part.text) {
-            this.emit("transcript", part.text, content.turnComplete || false);
           }
         }
       }

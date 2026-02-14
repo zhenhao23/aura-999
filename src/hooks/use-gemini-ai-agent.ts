@@ -18,6 +18,11 @@ import {
 } from "@/lib/firebase/signaling";
 import { CallPhase } from "@/types/ai-agent";
 import { Modality } from "@google/genai";
+import {
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 
 interface UseGeminiAIAgentProps {
   callId: string | null;
@@ -40,7 +45,7 @@ export function useGeminiAIAgent({
 }: UseGeminiAIAgentProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<CallPhase>("ai-screening");
-  const [aiTranscript, setAITranscript] = useState<string>("");
+  const [interimTranscript, setInterimTranscript] = useState<string>("");
   const clientRef = useRef<GeminiLiveClient | null>(null);
   const callIdRef = useRef<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -52,6 +57,8 @@ export function useGeminiAIAgent({
   const isInitialConnectionRef = useRef(true);
   const lastLocationSentRef = useRef<string>("");
   const locationRef = useRef(location);
+  const isAiTalkingRef = useRef(false);
+  const currentSentenceRef = useRef("");
 
   // Keep the internal ref in sync with the prop
   useEffect(() => {
@@ -98,13 +105,44 @@ export function useGeminiAIAgent({
       if (currentPhase === "ai-screening") {
         playAudio(audioData, sampleRate);
       }
+      if (!isAiTalkingRef.current && audioData.byteLength > 500) {
+        isAiTalkingRef.current = true;
+        setInterimTranscript("");
+      }
       // In shadow mode (dispatcher-active), AI output is muted
     });
 
-    client.on("transcript", (text, isFinal) => {
-      if (isFinal) {
-        setAITranscript((prev) => prev + " " + text);
+    client.on("transcript", async (text, isFinal) => {
+
+      // isFinal is always False
+      isAiTalkingRef.current = false;
+      const cleanWord = text.trim();
+      if (!cleanWord) return;
+
+      currentSentenceRef.current += (currentSentenceRef.current ? " " : "") + cleanWord;
+
+      const allWords = currentSentenceRef.current.split(" ");
+      const allJoined = currentSentenceRef.current;
+
+      // if (isFinal) {
+      //   const finalSentence = currentSentenceRef.current.trim();
+      //   if (callIdRef.current && finalSentence) {
+      //     await saveTranscript(callIdRef.current, finalSentence, 'caller');
+      //   }
+      //   setAITranscript((prev) => prev + " " + text);
+      //   setInterimTranscript("");
+      //   currentSentenceRef.current = "";
+      // } else {
+
+      const last10 = allWords.slice(-10).join(" ");
+      setInterimTranscript(last10);
+
+      if (callIdRef.current) {
+        const callRef = doc(db, "aiSessions", callIdRef.current);
+        console.log(isFinal, text, "Saving interim transcript to Firebase:", allJoined);
+        await updateDoc(callRef, { liveInterim: allJoined });
       }
+      // }
     });
 
     client.on("toolCall", async (toolCall) => {
@@ -156,6 +194,7 @@ export function useGeminiAIAgent({
     if (clientRef.current) {
       clientRef.current.disconnect();
     }
+    currentSentenceRef.current = "";
   }, []);
 
   // Start heartbeat to prevent websocket timeout
@@ -213,6 +252,7 @@ export function useGeminiAIAgent({
       }
       const config = {
         responseModalities: [Modality.AUDIO],
+        inputAudioTranscription: {},
         systemInstruction: {
           parts: [{ text: dynamicPrompt }],
         },
@@ -550,7 +590,7 @@ export function useGeminiAIAgent({
   return {
     isConnected,
     currentPhase,
-    aiTranscript,
+    interimTranscript,
     connect,
     preconnect,
     disconnect,

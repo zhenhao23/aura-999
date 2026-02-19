@@ -1,0 +1,83 @@
+Determinant Code,Level,Descriptor
+01-E-1,Echo,Not breathing
+01-E-2,Echo,Unconscious
+01-D-1,Delta,Not alert
+01-D-2,Delta,Fainting / near fainting
+01-D-3,Delta,Vomiting blood
+01-D-4,Delta,Bloody or black stool
+01-D-5,Delta,Severe abdominal pain with rigidity
+01-D-6,Delta,Female 12–50 severe pain with fainting / possible pregnancy
+01-D-7,Delta,Known aortic aneurysm with abdominal pain
+01-C-1,Charlie,Constant abdominal pain
+01-C-2,Charlie,Age ≥ 65 with abdominal pain
+01-B-1,Bravo,Vomiting
+01-B-2,Bravo,Diarrhea
+01-B-3,Bravo,Urinary retention
+01-B-4,Bravo,Flank pain
+01-B-5,Bravo,Male with groin pain
+01-A-1,Alpha,Mild abdominal pain
+01-A-2,Alpha,Non‑recent vomiting
+01-A-3,Alpha,Non‑recent diarrhea
+01-O-1,Omega,Chronic abdominal problem
+01-O-2,Omega,Minor resolved symptoms
+02-E-1,Echo,Not breathing
+02-E-2,Echo,Unconscious
+02-D-1,Delta,Severe respiratory distress
+02-D-2,Delta,Not alert
+02-D-3,Delta,Swelling of tongue / throat
+02-D-4,Delta,Multiple stings
+02-D-5,Delta,History of anaphylaxis
+02-C-1,Charlie,Difficulty breathing
+02-C-2,Charlie,Vomiting
+02-C-3,Charlie,Rash or hives
+02-B-1,Bravo,Localized swelling
+02-B-2,Bravo,Itching
+02-B-3,Bravo,Pain at site
+02-A-1,Alpha,Minor reaction
+02-A-2,Alpha,No breathing difficulty
+02-Ω-1,Omega,Minor bite or sting – no symptoms
+03-E-1,Echo,Not breathing
+03-E-2,Echo,Unconscious
+03-D-1,Delta,Multiple animals involved
+03-D-2,Delta,Severe bleeding
+03-D-3,Delta,Dangerous body area bitten
+03-C-1,Charlie,Large animal bite
+03-B-1,Bravo,Non-recent attack
+03-A-1,Alpha,Minor bite
+04-E-1,Echo,Not breathing
+04-E-2,Echo,Unconscious
+04-D-1,Delta,Severe injuries
+04-D-2,Delta,Strangulation
+04-C-1,Charlie,Serious injury but alert
+04-B-1,Bravo,Minor injuries
+04-A-1,Alpha,No visible injury
+05-D-1,Delta,Not alert
+05-C-1,Charlie,Age ≥ 65 with pain
+05-B-1,Bravo,Non-traumatic back pain
+05-A-1,Alpha,Chronic back pain
+06-E-1,Echo,Not breathing
+06-E-2,Echo,Ineffective breathing
+06-D-1,Delta,Severe respiratory distress
+06-C-1,Charlie,Abnormal breathing
+06-B-1,Bravo,Mild breathing difficulty
+06-A-1,Alpha,Cold symptoms
+07-E-1,Echo,Not breathing
+07-D-1,Delta,Airway burns
+07-D-2,Delta,Large surface burns
+07-C-1,Charlie,Serious burns
+07-B-1,Bravo,Moderate burns
+07-A-1,Alpha,Minor burns
+08-E-1,Echo,Not breathing
+08-D-1,Delta,Multiple patients affected
+08-C-1,Charlie,Headache and dizziness
+08-B-1,Bravo,CO alarm only
+08-A-1,Alpha,Odor investigation
+09-E-1,Echo,Not breathing
+09-E-2,Echo,Ineffective breathing
+09-D-1,Delta,Unconscious
+09-C-1,Charlie,Ineffective breathing – conscious
+10-E-1,Echo,Not breathing
+10-D-1,Delta,Heart attack symptoms
+10-C-1,Charlie,Abnormal breathing
+10-B-1,Bravo,Chest pain < 35 years
+10-A-1,Alpha,Non-cardiac chest pain

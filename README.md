@@ -254,6 +254,7 @@ IF location = "maritime" → MMEA (Maritime)
 ```
 
 **2.2 MPDS Event Code Classifier**
+
 The MPDS Event Code Classifier is a machine learning tool designed to automate the categorization of emergency medical dispatch descriptions into standardized protocols.
 
 #### 2.2.1 Understanding MPDS Event Codes
@@ -275,9 +276,9 @@ The model follows a structured NLP pipeline that transforms raw text into a nume
 The architecture is built using a sequential `scikit-learn` pipeline consisting of two primary stages:
 
 | Component          | Technical Implementation              | Purpose                                                                                                                    |
-| :----------------- | :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------- | --- |
-| Feature Extraction | `TfidfVectorizer(ngram_range=(1, 2))` | Converts text into numerical weights. It uses bi-grams to capture context (e.g., distinguishing "pain" from "chest pain"). |     |
-| Classification     | `RandomForestClassifier `             | An ensemble of 100 Decision Trees that vote on the final code based on the patterns identified in the text.                |
+| :----------------- | :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------- |
+| Feature Extraction | `TfidfVectorizer(ngram_range=(1, 2))` | Converts text into numerical weights. It uses bi-grams to capture context (e.g., distinguishing "pain" from "chest pain"). |
+| Classification     | `RandomForestClassifier`              | An ensemble of 100 Decision Trees that vote on the final code based on the patterns identified in the text.                |
 
 #### 2.2.3 Implementation Logic
 

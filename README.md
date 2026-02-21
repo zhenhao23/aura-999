@@ -253,7 +253,47 @@ IF incident_type = "disaster" → APM (Civil Defense)
 IF location = "maritime" → MMEA (Maritime)
 ```
 
-**2.2 Resource Allocation Algorithm** _(Placeholder)_
+**2.2 MPDS Event Code Classifier**
+The MPDS Event Code Classifier is a machine learning tool designed to automate the categorization of emergency medical dispatch descriptions into standardized protocols.
+
+#### 2.2.1 Understanding MPDS Event Codes
+
+The Medical Priority Dispatch System (MPDS) is a unified system used by emergency dispatch centers to prioritize 911 calls. It translates a caller’s description of an emergency into a Determinant Code (e.g., 10-D-1).
+
+- **Protocol (e.g., 10)**: The general category (e.g., Chest Pain).
+- **Level (e.g.,D)**: Severity, ranging from A (Alpha/Low) to E (Echo/Critical).
+- **Sub-Indicator (e.g.,1)**: Specific clinical findings (e.g., "Not Alert").
+
+By classifying these codes automatically, the model reduces the cognitive load on dispatchers and ensures faster response times for high-priority incidents.
+
+#### 2.2.2 Model Architecture & Data Flow
+
+![MPDS Model Architechture](/public/screenshots/MPDS_model.png)
+
+The model follows a structured NLP pipeline that transforms raw text into a numerical representation before performing classification.
+
+The architecture is built using a sequential `scikit-learn` pipeline consisting of two primary stages:
+
+| Component          | Technical Implementation              | Purpose                                                                                                                    |
+| :----------------- | :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------- | --- |
+| Feature Extraction | `TfidfVectorizer(ngram_range=(1, 2))` | Converts text into numerical weights. It uses bi-grams to capture context (e.g., distinguishing "pain" from "chest pain"). |     |
+| Classification     | `RandomForestClassifier `             | An ensemble of 100 Decision Trees that vote on the final code based on the patterns identified in the text.                |
+
+#### 2.2.3 Implementation Logic
+
+The logic follows these steps:
+
+**1. Text Preprocessing**: The `Descriptor` column (raw text) is cleaned and tokenized.
+
+**2. Vectorization**: The TF-IDF (Term Frequency-Inverse Document Frequency) algorithm assigns higher importance to unique keywords that define specific protocols.
+
+**3.Ensemble Learning**: The Random Forest model processes these features. Because it uses multiple trees, it is highly resistant to "noise" in the text and prevents overfitting.
+
+**4. Persistence**: The final trained model is serialized into an `event_code_model.pkl` file using the joblib library, allowing it to be integrated into the system without retraining.
+
+---
+
+**2.3 Resource Allocation Algorithm** _(Placeholder)_
 
 - **Input**: Urgency level, incident type, location, hazards
 - **Output**: Ranked resource list with reasoning

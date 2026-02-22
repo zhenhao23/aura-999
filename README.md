@@ -294,11 +294,44 @@ The logic follows these steps:
 
 ---
 
-**2.3 Resource Allocation Algorithm** _(Placeholder)_
+**2.3 Multi-Modal Emergency Resource Predictor**
 
-- **Input**: Urgency level, incident type, location, hazards
-- **Output**: Ranked resource list with reasoning
-- **Optimization**: Distance, availability, equipment suitability
+This model serves as the Resource Allocation Engine. It predicts the required intensity/units for Police, Ambulance, and Fire (Bomba) services simultaneously.
+
+#### 2.3.1 Functional Overview
+
+This model uses a `Functional API` approach in `TensorFlow` to process two distinct types of data:
+
+**1. Unstructured Data**: High-dimensional text embeddings from incident details.
+
+**2. Structured Data**: Numerical features like urgency levels and temporal data (time of day/weekend).
+
+#### 2.3.2 Deep Learning Architecture
+
+![Multi Model Architechture](/public/screenshots/multi_model.png)
+
+The model utilizes a **Late Fusion** strategy, where features are processed in separate "branches" before being merged for the final decision.
+
+The architecture consists of:
+
+- **NLP Encoder** (`all-MiniLM-L6-v2`): A pre-trained Transformer model that converts raw incident text into a fixed 384-dimensional vector, capturing the semantic context of the emergency.
+
+- **Numerical Scaler**: A `StandardScaler` that normalizes inputs like urgency and hour to ensure the neural network weights remain stable during training.
+
+- **Feature Fusion Layer**: A concatenation layer that joins the 128-unit text features with the 64-unit numeric features.
+
+- **Multi-Output Regression**: A final dense layer that outputs three continuous values representing the predicted resource requirements for dispatch.
+
+#### 2.3.3 Technical Specifications
+
+| Feature           | Detail                                                   |
+| :---------------- | :------------------------------------------------------- |
+| Framework         | TensorFlow / Keras (Functional API)                      |
+| Embedding Model   | Sentence-BERT (SBERT)                                    |
+| Input 1 (Text)    | Combined `incident_type`, `details`, `hazards`, `people` |
+| Input 2 (Numeric) | `urgency`, `hour`, `is_weekend`                          |
+| Loss Function     | Mean Squared Error (MSE)                                 |
+| Optimizer         | Adam                                                     |
 
 ---
 

@@ -54,7 +54,7 @@ Our design is informed by:
 
 ![Architecture Flow](/public/screenshots/Architecture-Flow.png)
 
-### Phase 1: AI Screening Layer (The Intake)
+### Phase 1: AI Screening Layer
 
 **Duration**: < 2 minutes | **AI Role**: Active Dispatcher
 
@@ -93,7 +93,7 @@ Instead of waiting in a human queue, **999 callers are immediately met by an AI 
 
 ---
 
-### Phase 2: Agency Dispatcher Layer (The Human-AI Partnership)
+### Phase 2: Agency Dispatcher Layer
 
 **AI Role**: Shadow Mode (Listen-only, non-speaking assistant)
 
@@ -103,7 +103,7 @@ Once the AI has screened the call, **data is passed to the relevant primary agen
 
 **Dispatcher Interface Features:**
 
-- **Live AI Summary**
+- **Live AI Summary** (Progressive Updates via `updateIncidentFieldTool`)
   - Real-time incident updates as conversation progresses
   - Tooltip explanations: "Why AI thinks this" (evidence-based reasoning)
   - 🎬 Clip buttons: 3-second video/audio evidence from caller's stream
@@ -131,7 +131,7 @@ Once the AI has screened the call, **data is passed to the relevant primary agen
 
 ---
 
-### Phase 3: Resource Dispatch & Post-Incident Layer (The Execution)
+### Phase 3: Resource Dispatch & Post-Incident Layer
 
 Once the dispatcher confirms the emergency, **the physical response begins** with intelligent coordination and automated workflows.
 

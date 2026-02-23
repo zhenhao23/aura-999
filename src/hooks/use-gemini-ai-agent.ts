@@ -128,7 +128,6 @@ export function useGeminiAIAgent({
     setCurrentPhase("dispatcher-active");
   }, []);
 
-
   // Disconnect from Gemini
   const disconnect = useCallback(() => {
     if (heartbeatIntervalRef.current) {
@@ -156,12 +155,12 @@ export function useGeminiAIAgent({
     // Send silent audio every 5 seconds if no real audio was sent
     heartbeatIntervalRef.current = setInterval(() => {
       const timeSinceLastAudio = Date.now() - lastAudioTimeRef.current;
-      
+
       // If no audio sent in last 3 seconds, send silent frame (320 bytes = 20ms at 16kHz)
       if (timeSinceLastAudio > 3000 && clientRef.current?.isConnected()) {
         const silentFrame = new ArrayBuffer(320);
         const base64Silent = btoa(
-          String.fromCharCode(...new Uint8Array(silentFrame))
+          String.fromCharCode(...new Uint8Array(silentFrame)),
         );
         clientRef.current.sendAudio(base64Silent);
         console.log("💓 Heartbeat: sent silent audio frame");
@@ -389,7 +388,9 @@ export function useGeminiAIAgent({
   const playAudio = async (audioData: ArrayBuffer, sampleRate?: number) => {
     try {
       if (!audioContextRef.current) {
-        audioContextRef.current = new AudioContext({ latencyHint: "interactive" });
+        audioContextRef.current = new AudioContext({
+          latencyHint: "interactive",
+        });
       }
 
       const audioCtx = audioContextRef.current;

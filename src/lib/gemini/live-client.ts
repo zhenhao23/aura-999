@@ -178,7 +178,11 @@ export class GeminiLiveClient extends EventEmitter<GeminiLiveClientEvents> {
   }
 
   private flushQueuedAudio() {
-    if (!this.isSocketOpen || !this.session || this.pendingAudioQueue.length === 0) {
+    if (
+      !this.isSocketOpen ||
+      !this.session ||
+      this.pendingAudioQueue.length === 0
+    ) {
       return;
     }
     const queued = this.pendingAudioQueue;

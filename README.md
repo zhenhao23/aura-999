@@ -38,15 +38,16 @@ Our design is informed by:
 ## Table of Contents
 
 - [System Architecture & Flow](#system-architecture--flow)
-  - [Phase 1: AI Screening Layer](#phase-1-ai-screening-layer-the-intake)
-  - [Phase 2: Agency Dispatcher Layer](#phase-2-agency-dispatcher-layer-the-human-ai-partnership)
-  - [Phase 3: Resource Dispatch & Post Incident Layer](#phase-3-resource-dispatch--post-incident-layer-the-execution)
-- [Technical Deep Dives](#-technical-deep-dives)
+  - [Phase 1: AI Screening Layer](#phase-1-ai-screening-layer)
+  - [Phase 2: Agency Dispatcher Layer](#phase-2-agency-dispatcher-layer)
+  - [Phase 3: Resource Dispatch & Post-Incident Layer](#phase-3-resource-dispatch--post-incident-layer)
+- [Tech Stack](#tech-stack)
+- [Multilingual Support](#multilingual-support)
+- [Technical Deep Dives](#technical-deep-dives)
   - [MPDS Event Code Classifier](#1-mpds-event-code-classifier)
   - [Multi-Modal Emergency Resource Predictor](#2-multi-modal-emergency-resource-predictor)
-- [Multilingual Support](#-multilingual-support)
-- [Tech Stack](#tech-stack)
-- [Getting Started](#-getting-started)
+- [Future Improvements](#future-improvements)
+- [Getting Started](#getting-started)
 
 ---
 
@@ -72,8 +73,7 @@ Instead of waiting in a human queue, **999 callers are immediately met by an AI 
    - Incident type (fire/medical/accident/crime)
    - Location details (address/landmarks/GPS)
    - Number of people affected/injured
-   - Caller stress level analysis from voice patterns
-   - Real-time data streaming to Cloud Firestore for session tracking
+   - Caller stress level analysis from voice
 
 3. **Prank Detection & Verification**
    - Cross-references caller's geolocation against reported event location
@@ -117,7 +117,7 @@ Once the AI has screened the call, **data is passed to the relevant primary agen
   - AI-suggested emergency vehicles
   - Real-time ETA calculations using Google Maps Distance Matrix API
   - Vehicle availability status and current locations
-  - Approve ✓ / Deny ✗ / Modify controls for dispatcher
+  - Approve ✓ / Deny ✗ controls
 
 - **Tactical Map (Google Maps API)**
   - Real-time vehicle positions with live tracking
@@ -173,149 +173,7 @@ Once the dispatcher confirms the emergency, **the physical response begins** wit
 
 ---
 
-## 📋 Technical Deep Dives
-
-### 1. MPDS Event Code Classifier
-
-The MPDS Event Code Classifier is a machine learning tool designed to automate the categorization of emergency medical dispatch descriptions into standardized protocols.
-
-#### 1.1 Understanding MPDS Event Codes
-
-The Medical Priority Dispatch System (MPDS) is a unified system used by emergency dispatch centers to prioritize 911 calls. It translates a caller’s description of an emergency into a Determinant Code (e.g., 10-D-1).
-
-- **Protocol (e.g., 10)**: The general category (e.g., Chest Pain).
-- **Level (e.g.,D)**: Severity, ranging from A (Alpha/Low) to E (Echo/Critical).
-- **Sub-Indicator (e.g.,1)**: Specific clinical findings (e.g., "Not Alert").
-
-By classifying these codes automatically, the model reduces the cognitive load on dispatchers and ensures faster response times for high-priority incidents.
-
-#### 1.2 Model Architecture & Data Flow
-
-![MPDS Model Architechture](/public/screenshots/MPDS_model.png)
-
-The model follows a structured NLP pipeline that transforms raw text into a numerical representation before performing classification.
-
-The architecture is built using a sequential `scikit-learn` pipeline consisting of two primary stages:
-
-| Component          | Technical Implementation              | Purpose                                                                                                                    |
-| :----------------- | :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------- |
-| Feature Extraction | `TfidfVectorizer(ngram_range=(1, 2))` | Converts text into numerical weights. It uses bi-grams to capture context (e.g., distinguishing "pain" from "chest pain"). |
-| Classification     | `RandomForestClassifier`              | An ensemble of 100 Decision Trees that vote on the final code based on the patterns identified in the text.                |
-
-#### 1.3 Implementation Logic
-
-The logic follows these steps:
-
-**1. Text Preprocessing**: The `Descriptor` column (raw text) is cleaned and tokenized.
-
-**2. Vectorization**: The TF-IDF (Term Frequency-Inverse Document Frequency) algorithm assigns higher importance to unique keywords that define specific protocols.
-
-**3.Ensemble Learning**: The Random Forest model processes these features. Because it uses multiple trees, it is highly resistant to "noise" in the text and prevents overfitting.
-
-**4. Persistence**: The final trained model is serialized into an `event_code_model.pkl` file using the joblib library, allowing it to be integrated into the system without retraining.
-
----
-
-### 2. Multi-Modal Emergency Resource Predictor
-
-This model serves as the Resource Allocation Engine. It predicts the required intensity/units for Police, Ambulance, and Fire (Bomba) services simultaneously.
-
-#### 2.1 Functional Overview
-
-This model uses a `Functional API` approach in `TensorFlow` to process two distinct types of data:
-
-**1. Unstructured Data**: High-dimensional text embeddings from incident details.
-
-**2. Structured Data**: Numerical features like urgency levels and temporal data (time of day/weekend).
-
-#### 2.2 Deep Learning Architecture
-
-![Multi Model Architechture](/public/screenshots/multi_model.png)
-
-The model utilizes a **Late Fusion** strategy, where features are processed in separate "branches" before being merged for the final decision.
-
-The architecture consists of:
-
-- **NLP Encoder** (`all-MiniLM-L6-v2`): A pre-trained Transformer model that converts raw incident text into a fixed 384-dimensional vector, capturing the semantic context of the emergency.
-
-- **Numerical Scaler**: A `StandardScaler` that normalizes inputs like urgency and hour to ensure the neural network weights remain stable during training.
-
-- **Feature Fusion Layer**: A concatenation layer that joins the 128-unit text features with the 64-unit numeric features.
-
-- **Multi-Output Regression**: A final dense layer that outputs three continuous values representing the predicted resource requirements for dispatch.
-
-#### 2.3 Technical Specifications
-
-| Feature           | Detail                                                   |
-| :---------------- | :------------------------------------------------------- |
-| Framework         | TensorFlow / Keras (Functional API)                      |
-| Embedding Model   | Sentence-BERT (SBERT)                                    |
-| Input 1 (Text)    | Combined `incident_type`, `details`, `hazards`, `people` |
-| Input 2 (Numeric) | `urgency`, `hour`, `is_weekend`                          |
-| Loss Function     | Mean Squared Error (MSE)                                 |
-| Optimizer         | Adam                                                     |
-
----
-
-## 🌐 Multilingual Support
-
-All phases support:
-
-- Bahasa Malaysia / Bahasa Pasar (colloquial Malay)
-- Manglish (Malaysian English)
-- Mandarin
-- Tamil
-- English
-
-**Translation Layer:**
-
-- Language detection
-- Real-time transcription translation
-
----
-
-## 🚀 Future Improvements
-
-### 1. AI-Handled Non-Emergency Inquiries (Priority 4-5)
-
-For routine calls requiring no resource dispatch, AI can resolve inquiries independently without human dispatcher transfer, saving valuable dispatcher time:
-
-**Information Requests with Location Intelligence:**
-
-- Caller asks: _"Where is the nearest clinic?"_
-  - AI performs real-time search using Google Places API
-  - Provides clinic name, address, operating hours, phone number
-  - Sends SMS with Google Maps link pinpoint for navigation
-  - No dispatcher involvement needed
-
-**Professional Safety Guidance via RAG:**
-
-- Caller reports: _"My cooking oil pan caught fire, what do I do?"_
-  - AI accesses emergency procedures knowledge base
-  - Provides step-by-step instructions: Turn off heat, cover pan with lid/wet towel, DO NOT use water
-  - Confirms situation is under control before ending call
-  - Escalates to Phase 2 if fire spreads beyond pan
-
-**Automated Station Notification (No Human Dispatcher):**
-
-- Caller reports: _"Minor collision at traffic light, no injuries, cars still drivable"_
-  - AI classifies as Priority 5 (non-urgent report)
-  - Automatically logs incident and notifies nearest police station via internal system
-  - Provides caller with report reference number for insurance claims
-  - Advises on safe vehicle removal procedures
-  - Dispatcher freed to handle genuine emergencies
-
-**Impact**: Reduces dispatcher workload, allowing focus on Priority 1-2 cases.
-
-### 3. Smart Traffic Integration (STARS)
-
-- Deploy **STARS** (Smart Traffic Analytics & Recognition System) in pilot cities (Ipoh, etc.)
-- Implement **"Green wave" coordination** for emergency vehicles with priority traffic light sequencing
-- Real-time route optimization based on traffic conditions
-
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 ![Tech Stack](/public/screenshots/Tech-Stack.png)
 
@@ -364,30 +222,179 @@ For routine calls requiring no resource dispatch, AI can resolve inquiries indep
 
 ---
 
+## Multilingual Support
+
+All phases support:
+
+- Bahasa Malaysia / Bahasa Pasar (colloquial Malay)
+- Manglish (Malaysian English)
+- Mandarin
+- Tamil
+- English
+
+**Translation Layer:**
+
+- Language detection
+- Real-time transcription translation
+
+---
+
+## Technical Deep Dives
+
+### 1. MPDS Event Code Classifier
+
+The MPDS Event Code Classifier is a machine learning tool designed to automate the categorization of emergency medical dispatch descriptions into standardized protocols.
+
+#### 1.1 Understanding MPDS Event Codes
+
+The Medical Priority Dispatch System (MPDS) is a unified system used by emergency dispatch centers to prioritize 999 calls. It translates a caller’s description of an emergency into a Determinant Code (e.g., 10-D-1).
+
+- **Protocol (e.g., 10)**: The general category (e.g., Chest Pain).
+- **Level (e.g., D)**: Severity, ranging from A (Alpha/Low) to E (Echo/Critical).
+- **Sub-Indicator (e.g., 1)**: Specific clinical findings (e.g., "Not Alert").
+
+By classifying these codes automatically, the model reduces the cognitive load on dispatchers and ensures faster response times for high-priority incidents.
+
+#### 1.2 Model Architecture & Data Flow
+
+![MPDS Model Architecture](/public/screenshots/MPDS_model.png)
+
+The model follows a structured NLP pipeline that transforms raw text into a numerical representation before performing classification.
+
+The architecture is built using a sequential `scikit-learn` pipeline consisting of two primary stages:
+
+| Component          | Technical Implementation              | Purpose                                                                                                                    |
+| :----------------- | :------------------------------------ | :------------------------------------------------------------------------------------------------------------------------- |
+| Feature Extraction | `TfidfVectorizer(ngram_range=(1, 2))` | Converts text into numerical weights. It uses bi-grams to capture context (e.g., distinguishing "pain" from "chest pain"). |
+| Classification     | `RandomForestClassifier`              | An ensemble of 100 Decision Trees that vote on the final code based on the patterns identified in the text.                |
+
+#### 1.3 Implementation Logic
+
+The logic follows these steps:
+
+**1. Text Preprocessing**: The `Descriptor` column (raw text) is cleaned and tokenized.
+
+**2. Vectorization**: The TF-IDF (Term Frequency-Inverse Document Frequency) algorithm assigns higher importance to unique keywords that define specific protocols.
+
+**3. Ensemble Learning**: The Random Forest model processes these features. Because it uses multiple trees, it is highly resistant to "noise" in the text and prevents overfitting.
+
+**4. Persistence**: The final trained model is serialized into an `event_code_model.pkl` file using the joblib library, allowing it to be integrated into the system without retraining.
+
+---
+
+### 2. Multi-Modal Emergency Resource Predictor
+
+This model serves as the Resource Allocation Engine. It predicts the required intensity/units for Police, Ambulance, and Fire (Bomba) services simultaneously.
+
+#### 2.1 Functional Overview
+
+This model uses a `Functional API` approach in `TensorFlow` to process two distinct types of data:
+
+**1. Unstructured Data**: High-dimensional text embeddings from incident details.
+
+**2. Structured Data**: Numerical features like urgency levels and temporal data (time of day/weekend).
+
+#### 2.2 Deep Learning Architecture
+
+![Multi Model Architecture](/public/screenshots/multi_model.png)
+
+The model utilizes a **Late Fusion** strategy, where features are processed in separate "branches" before being merged for the final decision.
+
+The architecture consists of:
+
+- **NLP Encoder** (`all-MiniLM-L6-v2`): A pre-trained Transformer model that converts raw incident text into a fixed 384-dimensional vector, capturing the semantic context of the emergency.
+
+- **Numerical Scaler**: A `StandardScaler` that normalizes inputs like urgency and hour to ensure the neural network weights remain stable during training.
+
+- **Feature Fusion Layer**: A concatenation layer that joins the 128-unit text features with the 64-unit numeric features.
+
+- **Multi-Output Regression**: A final dense layer that outputs three continuous values representing the predicted resource requirements for dispatch.
+
+#### 2.3 Technical Specifications
+
+| Feature           | Detail                                                   |
+| :---------------- | :------------------------------------------------------- |
+| Framework         | TensorFlow / Keras (Functional API)                      |
+| Embedding Model   | Sentence-BERT (SBERT)                                    |
+| Input 1 (Text)    | Combined `incident_type`, `details`, `hazards`, `people` |
+| Input 2 (Numeric) | `urgency`, `hour`, `is_weekend`                          |
+| Loss Function     | Mean Squared Error (MSE)                                 |
+| Optimizer         | Adam                                                     |
+
+---
+
+## Future Improvements
+
+### 1. AI-Handled Non-Emergency Inquiries
+
+For routine calls requiring no resource dispatch, AI can resolve inquiries independently without human dispatcher transfer, saving valuable dispatcher time:
+
+**Information Requests with Location Intelligence:**
+
+- Caller asks: _"Where is the nearest clinic?"_
+  - AI performs real-time search using Google Places API
+  - Provides clinic name, address, operating hours, phone number
+  - Sends SMS with Google Maps link pinpoint for navigation
+  - No dispatcher involvement needed
+
+**Professional Safety Guidance via RAG:**
+
+- Caller reports: _"My cooking oil pan caught fire, what do I do?"_
+  - AI accesses emergency procedures knowledge base
+  - Provides step-by-step instructions: Turn off heat, cover pan with lid/wet towel, DO NOT use water
+  - Confirms situation is under control before ending call
+  - Escalates to Phase 2 if fire spreads beyond pan
+
+**Automated Station Notification (No Human Dispatcher):**
+
+- Caller reports: _"Minor collision at traffic light, no injuries, cars still drivable"_
+  - AI classifies as Priority 5 (non-urgent report)
+  - Automatically logs incident and notifies nearest police station via internal system
+  - Provides caller with report reference number for insurance claims
+  - Advises on safe vehicle removal procedures
+  - Dispatcher freed to handle genuine emergencies
+
+**Impact**: Reduces dispatcher workload, allowing focus on High Priority cases.
+
+### 2. Smart Traffic Integration (STARS)
+
+- Deploy **STARS** (Smart Traffic Analytics & Recognition System) in pilot cities (Ipoh, etc.)
+- Implement **"Green wave" coordination** for emergency vehicles with priority traffic light sequencing
+- Real-time route optimization based on traffic conditions
+
+### 3. Post-Major Incident Public Alerting
+
+- **Civilian notifications**: Automated alerts to affected/nearby areas via SMS/app push
+- **Official information dissemination**: Auto-generate incident reports for government channels and social media
+- **Misinformation prevention**: Ensure public receives accurate information faster than third-party sources
+
+---
+
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- Gemini API Key (from Google AI Studio)
-- Google Maps API Key
-- Firebase API Key
+- **Node.js 18+**
+- **Python 3.9+**
+- **API Keys**:
+  - [Gemini API Key](https://aistudio.google.com/apikey) from Google AI Studio
+  - [Google Maps API Key](https://console.cloud.google.com/) from Google Cloud Console (enable Maps JavaScript, Places, Directions, Distance Matrix, and Geocoding APIs)
+  - [Firebase Configuration](https://console.firebase.google.com/) from Firebase Console (enable Firestore Database)
 
-### Quick Start
+---
+
+### Step 1: Clone the Repository
 
 ```bash
-# Clone and install
-git clone https://github.com/yourusername/whateverclicks.git
+git clone https://github.com/zhenhao23/whateverclicks.git
 cd whateverclicks
-npm install
-
-# Run development server
-npm run dev
 ```
 
-### Set up environment variables
+---
 
-Create `.env.local` in the root directory:
+### Step 2: Set Up Environment Variables
+
+**Create a `.env.local` file** in the project root directory with the following:
 
 ```env
 # Gemini AI
@@ -404,3 +411,31 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
+
+---
+
+### Step 3: Install Dependencies
+
+**Install Node.js dependencies:**
+
+```bash
+npm install
+```
+
+**Install Python dependencies**:
+
+```bash
+cd src/app/recommender-system
+pip install -r requirements.txt
+cd ../../..
+```
+
+---
+
+### Step 4: Run the Development Server
+
+```bash
+npm run dev
+```
+
+The app will be available at **[http://localhost:3000](http://localhost:3000)**

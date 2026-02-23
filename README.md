@@ -386,8 +386,8 @@ For routine calls requiring no resource dispatch, AI can resolve inquiries indep
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/zhenhao23/whateverclicks.git
-cd whateverclicks
+git clone https://github.com/zhenhao23/aura-999.git
+cd aura-999
 ```
 
 ---

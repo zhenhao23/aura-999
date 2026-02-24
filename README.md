@@ -26,12 +26,12 @@ Our design is informed by:
 
 ### Key Compatibility Features
 
-| NG MERS 999 Protocol             | AURA 999 Implementation                                                  |
-| :------------------------------- | :----------------------------------------------------------------------- |
-| **< 2 Minute Initial Screening** | Phase 1 AI Dispatcher completes triage within 2-minute target            |
-| **Standard Question Scripts**    | Information collection follows established dispatch protocols            |
+| NG MERS 999 Protocol                                   | AURA 999 Implementation                                                  |
+| :----------------------------------------------------- | :----------------------------------------------------------------------- |
+| **< 2 Minute Initial Screening**                       | Phase 1 AI Dispatcher completes triage within 2-minute target            |
+| **Standard Question Scripts**                          | Information collection follows established dispatch protocols            |
 | **Medical Priority Dispatch System (MPDS) Event Code** | AI-powered RandomForest classifier auto-assigns standardized event codes |
-| **Agency Routing Logic**         | Integrates with PDRM, JBPM, KKM, APM, MMEA routing logic                 |
+| **Agency Routing Logic**                               | Integrates with PDRM, JBPM, KKM, APM, MMEA routing logic                 |
 
 ---
 
@@ -208,6 +208,12 @@ Once the dispatcher confirms the emergency, **the physical response begins** wit
 | :--------------------- | :---------------------------------------------------------------------- |
 | **Firestore Database** | WebRTC signaling, AI session state, location tracking, incident updates |
 
+#### 🧠 TensorFlow
+
+| Technology     | Use Case                                                               |
+| :------------- | :--------------------------------------------------------------------- |
+| **TensorFlow** | Multi-modal emergency resource predictor with late fusion architecture |
+
 ---
 
 ### ML Stack
@@ -243,6 +249,7 @@ All phases support:
 
 - Language detection
 - Real-time transcription translation
+- Bidirectional silent chat translation
 
 ---
 

@@ -11,7 +11,11 @@ import {
   AlertTriangle,
   Clock,
   Loader2,
+  Info,
+  AlertCircle,
+  Shield,
 } from "lucide-react";
+import { useState } from "react";
 
 interface IncomingCallAlertProps {
   callId: string;
@@ -33,6 +37,12 @@ export function IncomingCallAlert({
   onAccept,
   onReject,
 }: IncomingCallAlertProps) {
+  const [callerDetails, setCallerDetails] = useState({
+    phone: "+6016-1234567",
+    language: "English",
+    trustLevel: "Low", // e.g., High, Medium, Low
+  })
+  const [eventCode, setEventCode] = useState<string | null>("32-B-2");
   const getUrgencyColor = (level: number) => {
     if (level <= 1) return "bg-red-600";
     if (level <= 2) return "bg-orange-600";
@@ -41,10 +51,14 @@ export function IncomingCallAlert({
   };
 
   const getUrgencyLabel = (level: number) => {
-    if (level <= 1) return "RESUSCITATION";
-    if (level <= 2) return "EMERGENCY";
-    if (level <= 3) return "URGENT";
-    if (level <= 4) return "EARLY CARE";
+    // if (level <= 1) return "RESUSCITATION";
+    // if (level <= 2) return "EMERGENCY";
+    // if (level <= 3) return "URGENT";
+    // if (level <= 4) return "EARLY CARE";
+    if (level <= 1) return "Priority 1";
+    if (level <= 2) return "Priority 2";
+    if (level <= 3) return "Priority 3";
+    if (level <= 4) return "Priority 4";
     return "ROUTINE";
   };
 
@@ -67,6 +81,33 @@ export function IncomingCallAlert({
     return parts.join(" • ");
   }
 
+  const getTrustBadge = () => {
+    switch (callerDetails?.trustLevel.toLowerCase()) {
+      case "high":
+        return (
+          <Badge className="bg-green-600 flex items-center gap-1 text-[11px] font-semibold">
+            {/* Genuine */}
+            <Shield className="w-3 h-3" />
+            Genuine Caller
+          </Badge>
+        );
+      case "low":
+        return (
+          <Badge className="bg-red-600 animate-pulse flex items-center gap-1 text-[11px] font-semibold">
+            <AlertCircle className="w-3 h-3" />
+            Prank History Detected
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-yellow-500 flex items-center gap-1 text-[11px] font-semibold">
+            <Info className="w-3 h-3" />
+            Suspicious Caller
+          </Badge>
+        );
+    }
+  };
+
   return (
     <Card className="bg-gradient-to-br from-red-950/95 to-red-900/95 border-red-500 border-2 p-6 shadow-2xl animate-pulse-slow backdrop-blur-md">
       <div className="space-y-4">
@@ -80,11 +121,12 @@ export function IncomingCallAlert({
               <h3 className="text-xl font-bold text-white">
                 🚨 INCOMING EMERGENCY CALL
               </h3>
-              <p className="text-sm text-red-200">
-                {assessment
+              <p className="text-sm text-red-200 flex items-center gap-2">
+                {/* {assessment
                   ? "AI Assessment Complete"
                   : "🤖 AI Screening in Progress"}{" "}
-                • Call ID: {callId.substring(0, 8)}
+                • Call ID: {callId.substring(0, 8)} */}
+                Call ID: {callId.substring(0, 8)} • Event Code: {eventCode} {getTrustBadge()}
               </p>
             </div>
           </div>
@@ -92,7 +134,8 @@ export function IncomingCallAlert({
             className={`${getUrgencyColor(urgencyLevel)} text-white px-4 py-2 text-lg`}
           >
             <AlertTriangle className="w-4 h-4 mr-1" />
-            {getUrgencyLabel(urgencyLevel)} (Level {urgencyLevel})
+            {getUrgencyLabel(urgencyLevel)}
+            {/* {getUrgencyLabel(urgencyLevel)} (Level {urgencyLevel}) */}
           </Badge>
         </div>
 

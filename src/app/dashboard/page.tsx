@@ -6,6 +6,7 @@ import { ResourceAllocation } from "@/components/dashboard/ResourceAllocation";
 import { LiveFeed } from "@/components/dashboard/LiveFeed";
 import { LiveIncidentSummary } from "@/components/dashboard/LiveIncidentSummary";
 import { UniversalComms } from "@/components/dashboard/UniversalComms";
+import { SuggestedQuestions } from "@/components/dashboard/SuggestedQuestions";
 import { IncomingCallAlert } from "@/components/dashboard/IncomingCallAlert";
 import { TacticalMap } from "@/components/map/TacticalMap";
 import { Button } from "@/components/ui/button";
@@ -380,7 +381,17 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div className="col-span-4 pointer-events-none"></div>
+          {activeCallId && (
+            <>
+              <div className="col-span-1 pointer-events-none"></div>
+              <div className="col-span-2 overflow-auto pointer-events-auto">
+                <SuggestedQuestions onSendMessage={handleSendMessage} />
+              </div>
+              <div className="col-span-1 pointer-events-none"></div>
+            </>
+          )}
+
+          {!activeCallId && <div className="col-span-4 pointer-events-none"></div>}
 
           <div className="col-span-2 overflow-auto pointer-events-auto">
             <UniversalComms

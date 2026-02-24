@@ -30,7 +30,7 @@ Our design is informed by:
 | :------------------------------- | :----------------------------------------------------------------------- |
 | **< 2 Minute Initial Screening** | Phase 1 AI Dispatcher completes triage within 2-minute target            |
 | **Standard Question Scripts**    | Information collection follows established dispatch protocols            |
-| **MPDS Event Code**              | AI-powered RandomForest classifier auto-assigns standardized event codes |
+| **Medical Priority Dispatch System (MPDS) Event Code** | AI-powered RandomForest classifier auto-assigns standardized event codes |
 | **Agency Routing Logic**         | Integrates with PDRM, JBPM, KKM, APM, MMEA routing logic                 |
 
 ---
@@ -67,7 +67,7 @@ Instead of waiting in a human queue, **999 callers are immediately met by an AI 
 1. **Initial Contact & Multilingual Support** _([See Technical Deep Dive](#3-real-time-voice-ai-infrastructure))_
    - AI answers 999 call instantly, detecting and responding in caller's language
    - Supports **5 Malaysian languages**: Bahasa Malaysia/Bahasa Pasar, Manglish, Mandarin, Tamil, and English
-   - Handles mixed-language conversations and dialects seamlessly
+   - Handles mixed-language conversations seamlessly
    - Confirms geolocation (if available) before asking for location
 
 2. **Information Collection** (Progressive Updates via `updateAIProgressTool`)

@@ -114,7 +114,7 @@ export function ResourceAllocation({
                         </p>
                       </div>
                       <p className="text-lg font-bold text-blue-300">
-                        {suggestion.resource.available || 3}
+                        {3}
                       </p>
                       <p className="text-xs text-slate-500">
                         vehicles ready
@@ -130,7 +130,7 @@ export function ResourceAllocation({
                         </p>
                       </div>
                       <p className="text-lg font-bold text-yellow-300">
-                        {suggestion.resource.maintenance || 1}
+                        {1}
                       </p>
                       <p className="text-xs text-slate-500">in service</p>
                     </div>
@@ -144,7 +144,7 @@ export function ResourceAllocation({
                         </p>
                       </div>
                       <p className="text-lg font-bold text-red-400">
-                        {suggestion.resource.outstations || 2}
+                        {2}
                       </p>
                       <p className="text-xs text-slate-500">deployed</p>
                     </div>

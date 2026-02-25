@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { GeminiLiveClient } from "@/lib/gemini/live-client";
 import {
-  PHASE_1_SYSTEM_PROMPT,
+  // PHASE_1_SYSTEM_PROMPT,
   PHASE_2_SYSTEM_PROMPT,
+  buildPhase1SystemPrompt,
   assessUrgencyTool,
   updateAIProgressTool,
   updateIncidentFieldTool,
@@ -17,21 +18,34 @@ import {
 } from "@/lib/firebase/signaling";
 import { CallPhase } from "@/types/ai-agent";
 import { Modality } from "@google/genai";
+import {
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 
 interface UseGeminiAIAgentProps {
   callId: string | null;
   onTransferRequested: () => void;
   enabled: boolean;
+  location?: {
+    lat: number;
+    lng: number;
+    accuracy?: number;
+    buildingName?: string;
+    address?: string;
+  } | null;
 }
 
 export function useGeminiAIAgent({
   callId,
   onTransferRequested,
   enabled,
+  location,
 }: UseGeminiAIAgentProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [currentPhase, setCurrentPhase] = useState<CallPhase>("ai-screening");
-  const [aiTranscript, setAITranscript] = useState<string>("");
+  const [interimTranscript, setInterimTranscript] = useState<string>("");
   const clientRef = useRef<GeminiLiveClient | null>(null);
   const callIdRef = useRef<string | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -40,6 +54,16 @@ export function useGeminiAIAgent({
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastAudioTimeRef = useRef<number>(0);
   const callSyncedRef = useRef(false);
+  const isInitialConnectionRef = useRef(true);
+  const lastLocationSentRef = useRef<string>("");
+  const locationRef = useRef(location);
+  const isAiTalkingRef = useRef(false);
+  const currentSentenceRef = useRef("");
+
+  // Keep the internal ref in sync with the prop
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
 
   // Keep callIdRef in sync with callId prop
   useEffect(() => {
@@ -81,13 +105,44 @@ export function useGeminiAIAgent({
       if (currentPhase === "ai-screening") {
         playAudio(audioData, sampleRate);
       }
+      if (!isAiTalkingRef.current && audioData.byteLength > 500) {
+        isAiTalkingRef.current = true;
+        setInterimTranscript("");
+      }
       // In shadow mode (dispatcher-active), AI output is muted
     });
 
-    client.on("transcript", (text, isFinal) => {
-      if (isFinal) {
-        setAITranscript((prev) => prev + " " + text);
+    client.on("transcript", async (text, isFinal) => {
+
+      // isFinal is always False
+      isAiTalkingRef.current = false;
+      const cleanWord = text.trim();
+      if (!cleanWord) return;
+
+      currentSentenceRef.current += (currentSentenceRef.current ? " " : "") + cleanWord;
+
+      const allWords = currentSentenceRef.current.split(" ");
+      const allJoined = currentSentenceRef.current;
+
+      // if (isFinal) {
+      //   const finalSentence = currentSentenceRef.current.trim();
+      //   if (callIdRef.current && finalSentence) {
+      //     await saveTranscript(callIdRef.current, finalSentence, 'caller');
+      //   }
+      //   setAITranscript((prev) => prev + " " + text);
+      //   setInterimTranscript("");
+      //   currentSentenceRef.current = "";
+      // } else {
+
+      const last10 = allWords.slice(-10).join(" ");
+      setInterimTranscript(last10);
+
+      if (callIdRef.current) {
+        const callRef = doc(db, "aiSessions", callIdRef.current);
+        console.log(isFinal, text, "Saving interim transcript to Firebase:", allJoined);
+        await updateDoc(callRef, { liveInterim: allJoined });
       }
+      // }
     });
 
     client.on("toolCall", async (toolCall) => {
@@ -138,6 +193,7 @@ export function useGeminiAIAgent({
     if (clientRef.current) {
       clientRef.current.disconnect();
     }
+    currentSentenceRef.current = "";
   }, []);
 
   // Start heartbeat to prevent websocket timeout
@@ -185,6 +241,8 @@ export function useGeminiAIAgent({
   const connect = useCallback(
     async (activeCallId?: string, options?: { skipCallSync?: boolean }) => {
       const targetCallId = activeCallId || callId;
+      const currentLoc = locationRef.current;
+      const dynamicPrompt = buildPhase1SystemPrompt(currentLoc);
 
       if (!clientRef.current || !targetCallId) {
         if (!clientRef.current || !options?.skipCallSync) {
@@ -193,8 +251,9 @@ export function useGeminiAIAgent({
       }
       const config = {
         responseModalities: [Modality.AUDIO],
+        inputAudioTranscription: {},
         systemInstruction: {
-          parts: [{ text: PHASE_1_SYSTEM_PROMPT }],
+          parts: [{ text: dynamicPrompt }],
         },
         tools: [
           { functionDeclarations: [assessUrgencyTool, updateAIProgressTool] },
@@ -208,10 +267,21 @@ export function useGeminiAIAgent({
       if (!clientRef.current) return false;
       const success = await clientRef.current.connect(config);
       if (success) {
+
+        if (currentLoc?.address) {
+          lastLocationSentRef.current = currentLoc.address;
+        }
+
+        //2 seconds before allowing the useEffect to "update" anything
+        setTimeout(() => {
+          isInitialConnectionRef.current = false;
+        }, 2000);
+
         if (targetCallId && !options?.skipCallSync) {
           console.log("✅ AI connected successfully for call:", targetCallId);
           await syncCallIfNeeded(targetCallId);
         }
+
         return true;
       }
       console.error("❌ AI connection failed");
@@ -241,6 +311,33 @@ export function useGeminiAIAgent({
     }
   }, []);
 
+  // Update system prompt when location changes - BUT ONLY ONCE
+  useEffect(() => {
+    if (!isConnected || isInitialConnectionRef.current || !location?.address || currentPhase !== "ai-screening") return;
+
+    const locationKey = `${location.address}`;
+
+    if (lastLocationSentRef.current === locationKey) return;
+
+    console.log("📍 Updating AI with new location:", {
+      lat: location.lat,
+      lng: location.lng,
+      address: location.address,
+      buildingName: location.buildingName,
+      accuracy: location.accuracy,
+    });
+
+    // Update the system prompt with current location
+    clientRef.current?.updateConfig({
+      systemInstruction: {
+        parts: [{ text: buildPhase1SystemPrompt(location) }],
+      },
+    });
+
+    lastLocationSentRef.current = locationKey;
+
+  }, [location?.address, isConnected, currentPhase]);
+
   // Handle tool calls from AI
   const handleToolCall = async (toolCall: any) => {
     const currentCallId = callIdRef.current;
@@ -260,7 +357,11 @@ export function useGeminiAIAgent({
       // Phase 1: Progressive updates during screening
       if (fc.name === "update_ai_progress") {
         const args = fc.args as any;
-        console.log("📊 AI progress update:", args);
+        console.log("📊 AI progress update:", {
+          name: toolCall.name,
+          args: toolCall.args,
+          currentLocation: location,  // ← Check what's available here
+        });
 
         try {
           // Save progressive update to Firestore
@@ -490,7 +591,7 @@ export function useGeminiAIAgent({
   return {
     isConnected,
     currentPhase,
-    aiTranscript,
+    interimTranscript,
     connect,
     preconnect,
     disconnect,

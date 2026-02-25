@@ -33,6 +33,7 @@ import {
 import { useGeminiAIAgent } from "@/hooks/use-gemini-ai-agent";
 import { SimpleAudioRecorder } from "@/lib/audio/simple-recorder";
 import { CallPhase } from "@/types/ai-agent";
+import { send } from "process";
 
 export default function CallerPage() {
   const [isCallActive, setIsCallActive] = useState(false);
@@ -60,6 +61,8 @@ export default function CallerPage() {
     lat: number;
     lng: number;
     accuracy: number;
+    buildingName?: string;
+    address?: string;
   } | null>(null);
   const [currentPhase, setCurrentPhase] = useState<CallPhase>("ai-screening");
 
@@ -76,11 +79,30 @@ export default function CallerPage() {
   const hasInitiatedWebRTCRef = useRef<boolean>(false);
   const audioRecorderRef = useRef<SimpleAudioRecorder | null>(null);
   const videoIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isLocationReady, setIsLocationReady] = useState(false);
+  const currentLocationRef = useRef(currentLocation);
+
+  // Keep the Ref updated whenever state changes
+  useEffect(() => {
+    currentLocationRef.current = currentLocation;
+  }, [currentLocation]);
+
+  // Track when location is fully ready
+  useEffect(() => {
+    if (currentLocation?.address && currentLocation?.lat && currentLocation?.lng && currentLocation?.buildingName) {
+      console.log("✅ Location fully ready:", currentLocation.address);
+      setIsLocationReady(true);
+    } else {
+      setIsLocationReady(false);
+    }
+  }, [currentLocation]);
 
   // AI Agent hook
   const {
     isConnected: aiConnected,
     connect: connectAI,
+    // aiTranscript: transcriptAI,
+    interimTranscript,
     preconnect: preconnectAI,
     disconnect: disconnectAI,
     enterShadowMode,
@@ -90,11 +112,16 @@ export default function CallerPage() {
     callId,
     onTransferRequested: handleDispatcherHandoff,
     enabled: currentPhase === "ai-screening",
+    location: isLocationReady ? currentLocation : null,
   });
 
   useEffect(() => {
-    void preconnectAI();
-  }, [preconnectAI]);
+    // Only preconnect if location is ready AND we aren't already connected
+    if (isLocationReady && currentLocation?.address && !aiConnected && !isCallActive) {
+      console.log("🚀 Preconnecting AI...");
+      void preconnectAI();
+    }
+  }, [isLocationReady, currentLocation?.address, aiConnected, isCallActive]);
 
   // Handler for when AI requests transfer to dispatcher
   async function handleDispatcherHandoff() {
@@ -105,19 +132,50 @@ export default function CallerPage() {
   const reverseGeocode = async (
     lat: number,
     lng: number,
-  ): Promise<string | undefined> => {
+    // ): Promise<string | undefined> => {
+  ): Promise<{ buildingName?: string; address?: string }> => {
     try {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
       );
       const data = await response.json();
       if (data.results && data.results.length > 0) {
-        return data.results[0].formatted_address;
+        // return data.results[0].formatted_address;
+        const result = data.results[0];
+
+        // Define the types we care about for "Large Buildings"
+        const priorityTypes = ['university', 'shopping_mall', 'hospital', 'stadium', 'airport'];
+        // We search within a 100-meter radius of the coords
+        const placeRes = await fetch(
+          `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=100&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+        );
+        const placeData = await placeRes.json();
+
+        let buildingName = "";
+
+        if (placeData.results && placeData.results.length > 0) {
+          // 1. Try to find a result that matches one of our "Big Building" types
+          const largeBuilding = placeData.results.find((place: any) =>
+            place.types.some((type: string) => priorityTypes.includes(type))
+          );
+
+          // 2. If we found a Mall/University, use that. 
+          // 3. Otherwise, fallback to the most "prominent" first result.
+          buildingName = largeBuilding ? largeBuilding.name : placeData.results[0].name;
+        }
+
+        console.log("Reverse geocode result:", result.formatted_address, "Building:", buildingName, "selection:", placeData.results);
+
+        return {
+          buildingName: buildingName,
+          address: result.formatted_address,
+        };
       }
     } catch (err) {
       console.error("Geocoding error:", err);
     }
-    return undefined;
+    // return undefined;
+    return {};
   };
 
   // Start tracking caller's location
@@ -140,7 +198,7 @@ export default function CallerPage() {
       const now = Date.now();
 
       // Update local state
-      setCurrentLocation({ lat: latitude, lng: longitude, accuracy });
+      // setCurrentLocation({ lat: latitude, lng: longitude, accuracy });
 
       // Throttle Firebase updates: only if moved >10m OR 10 seconds passed
       const timeSinceLastUpdate = now - lastLocationUpdateRef.current;
@@ -154,11 +212,21 @@ export default function CallerPage() {
         // Get address (cached for similar coords)
         const address = await reverseGeocode(latitude, longitude);
 
+        // Update local state with complete location info
+        setCurrentLocation({
+          lat: latitude,
+          lng: longitude,
+          accuracy,
+          buildingName: address.buildingName,
+          address: address.address,
+        });
+
         // Update Firebase - only include heading/speed if they exist
         try {
           const locationData: any = {
             coords: new GeoPoint(latitude, longitude),
-            address,
+            buildingName: address.buildingName || "",
+            address: address.address || "",
             accuracy,
             timestamp: new Date() as any,
             source: "gps" as const,
@@ -250,6 +318,11 @@ export default function CallerPage() {
 
       // Start location tracking
       startLocationTracking(newCallId);
+
+      while (!currentLocationRef.current?.address) {
+        console.log("Waiting for real data...");
+        await new Promise(res => setTimeout(res, 500));
+      }
 
       // Connect to AI agent
       await connectAI(newCallId);
@@ -776,11 +849,10 @@ export default function CallerPage() {
             {/* Speaker Button */}
             <button
               onClick={toggleSpeaker}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isSpeakerOn
-                  ? "bg-white/20 hover:bg-white/30 text-white"
-                  : "bg-white hover:bg-white/90 text-gray-900"
-              }`}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isSpeakerOn
+                ? "bg-white/20 hover:bg-white/30 text-white"
+                : "bg-white hover:bg-white/90 text-gray-900"
+                }`}
               title={isSpeakerOn ? "Speaker On" : "Speaker Off"}
             >
               {isSpeakerOn ? <Volume2 size={24} /> : <VolumeX size={24} />}
@@ -789,11 +861,10 @@ export default function CallerPage() {
             {/* Mic Mute Button */}
             <button
               onClick={toggleMute}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isMuted
-                  ? "bg-white hover:bg-white/90 text-gray-900"
-                  : "bg-white/20 hover:bg-white/30 text-white"
-              }`}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isMuted
+                ? "bg-white hover:bg-white/90 text-gray-900"
+                : "bg-white/20 hover:bg-white/30 text-white"
+                }`}
               title={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
@@ -802,11 +873,10 @@ export default function CallerPage() {
             {/* Camera Toggle Button */}
             <button
               onClick={toggleCamera}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isCameraOn
-                  ? "bg-white/20 hover:bg-white/30 text-white"
-                  : "bg-white hover:bg-white/90 text-gray-900"
-              }`}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isCameraOn
+                ? "bg-white/20 hover:bg-white/30 text-white"
+                : "bg-white hover:bg-white/90 text-gray-900"
+                }`}
               title={isCameraOn ? "Camera On" : "Camera Off"}
             >
               {isCameraOn ? <Video size={24} /> : <VideoOff size={24} />}
@@ -824,11 +894,10 @@ export default function CallerPage() {
             {/* Chat Button */}
             <button
               onClick={toggleChat}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isChatOpen
-                  ? "bg-white hover:bg-white/90 text-gray-900"
-                  : "bg-white/20 hover:bg-white/30 text-white"
-              }`}
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${isChatOpen
+                ? "bg-white hover:bg-white/90 text-gray-900"
+                : "bg-white/20 hover:bg-white/30 text-white"
+                }`}
               title="Open Chat"
             >
               <MessageSquare size={24} />
@@ -840,6 +909,25 @@ export default function CallerPage() {
             <p className="text-center text-green-400 text-sm font-semibold mt-4">
               ✓ Connected to dispatcher
             </p>
+          )}
+        </div>
+      )}
+
+      {isCallActive && (
+        <div className="absolute top-24 left-4 right-4 pointer-events-none">
+          {interimTranscript && (
+            <div className="bg-black/60 backdrop-blur-md p-4 rounded-xl border border-white/20 max-w-lg mx-auto shadow-2xl">
+              <p className="text-white text-sm leading-relaxed">
+                {/* Stable text from the current turn */}
+                {/* <span>{transcriptAI}</span> */}
+
+                {/* Live active speech currently being processed */}
+                <span className="text-gray-300 ml-1">
+                  {interimTranscript}
+                  {interimTranscript && <span className="animate-pulse">|</span>}
+                </span>
+              </p>
+            </div>
           )}
         </div>
       )}
@@ -879,18 +967,16 @@ export default function CallerPage() {
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${
-                      message.sender === "caller"
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
+                    className={`flex ${message.sender === "caller"
+                      ? "justify-end"
+                      : "justify-start"
+                      }`}
                   >
                     <div
-                      className={`rounded-lg px-3 py-2 max-w-[80%] ${
-                        message.sender === "caller"
-                          ? "bg-blue-600 text-white"
-                          : "bg-white/20 text-white"
-                      }`}
+                      className={`rounded-lg px-3 py-2 max-w-[80%] ${message.sender === "caller"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white/20 text-white"
+                        }`}
                     >
                       <p className="text-sm">{message.content}</p>
                     </div>

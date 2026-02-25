@@ -19,6 +19,7 @@ import {
 
 export interface CallerLocation {
   coords: GeoPoint;
+  buildingName?: string;
   address?: string;
   accuracy: number; // in meters
   timestamp: Timestamp;
@@ -486,3 +487,29 @@ export function listenForVisualHazards(
 
   return unsubscribe;
 }
+
+
+// ==================== Transcription Functions ====================
+
+export const listenToLiveInterim = (
+  callId: string,
+  onUpdate: (text: string) => void
+) => {
+  // 1. Reference the specific document in the aiSessions collection
+  const callRef = doc(db, "aiSessions", callId);
+
+  // 2. Attach the real-time listener
+  const unsubscribe = onSnapshot(callRef, (docSnap) => {
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      // 3. Extract the liveInterim field specifically
+      const liveText = data.liveInterim || "";
+      onUpdate(liveText);
+    }
+  }, (error) => {
+    console.error("❌ Error listening to liveInterim:", error);
+  });
+
+  // Return the unsubscribe function so you can stop listening when the component unmounts
+  return unsubscribe;
+};

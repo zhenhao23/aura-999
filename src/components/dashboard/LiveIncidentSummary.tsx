@@ -148,8 +148,8 @@ export function LiveIncidentSummary({
 
   const agencyMap: Record<string, string> = {
     "30": "Fire",
-    "31": "Medical",
-    "32": "Police",
+    "31": "Police",
+    "32": "Medical",
     "33": "Marine",
     "34": "Civil Defence",
   };
@@ -240,7 +240,7 @@ export function LiveIncidentSummary({
         return (
           <Badge className="bg-red-600 animate-pulse flex items-center gap-1 text-[11px] font-semibold">
             <AlertCircle className="w-3 h-3" />
-            Prank History Detected
+            Previous Prank Caller
           </Badge>
         );
       default:
@@ -590,8 +590,8 @@ export function LiveIncidentSummary({
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
                     <SelectItem value="30">30 - Fire</SelectItem>
-                    <SelectItem value="31">31 - Medical</SelectItem>
-                    <SelectItem value="32">32 - Police</SelectItem>
+                    <SelectItem value="31">31 - Police</SelectItem>
+                    <SelectItem value="32">32 - Medical</SelectItem>
                     <SelectItem value="33">33 - Marine</SelectItem>
                     <SelectItem value="34">34 - Civil Defence</SelectItem>
                   </SelectContent>

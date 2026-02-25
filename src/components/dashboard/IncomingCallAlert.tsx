@@ -85,7 +85,7 @@ export function IncomingCallAlert({
     switch (callerDetails?.trustLevel.toLowerCase()) {
       case "high":
         return (
-          <Badge className="bg-green-600 flex items-center gap-1 text-[11px] font-semibold">
+          <Badge className="bg-green-600 flex items-center gap-1 text-[11px]">
             {/* Genuine */}
             <Shield className="w-3 h-3" />
             Genuine Caller
@@ -93,14 +93,14 @@ export function IncomingCallAlert({
         );
       case "low":
         return (
-          <Badge className="bg-red-600 animate-pulse flex items-center gap-1 text-[11px] font-semibold">
+          <Badge className="bg-red-600 animate-pulse flex items-center gap-1 text-[11px] ">
             <AlertCircle className="w-3 h-3" />
-            Prank History Detected
+            Previous Prank Caller
           </Badge>
         );
       default:
         return (
-          <Badge className="bg-yellow-500 flex items-center gap-1 text-[11px] font-semibold">
+          <Badge className="bg-yellow-500 flex items-center gap-1 text-[11px]">
             <Info className="w-3 h-3" />
             Suspicious Caller
           </Badge>

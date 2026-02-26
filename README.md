@@ -144,7 +144,7 @@ Once the dispatcher confirms the emergency, **the physical response begins** wit
 
 #### 🚨 Active Response Phase
 
-![Caller ETA View](/public/screenshots/Caller-View.png)
+<img src="/public/screenshots/Caller-View.png" alt="Caller ETA View" style="height: 50vh; width: auto;" />
 
 **Caller Transparency & Peace of Mind**
 

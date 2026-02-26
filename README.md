@@ -60,7 +60,7 @@ Our design is informed by:
 
 **Duration**: < 2 minutes | **AI Role**: Active Dispatcher
 
-![AI Screening](/public/screenshots/Caller View.png)
+![AI Screening](/public/screenshots/Incoming_Emergency-Call.png)
 
 Instead of waiting in a human queue, **999 callers are immediately met by an AI Dispatcher** (powered by Gemini 2.5 Flash) that conducts the initial triage.
 
@@ -98,7 +98,7 @@ Instead of waiting in a human queue, **999 callers are immediately met by an AI 
 
 **AI Role**: Shadow Mode (Listen-only, non-speaking assistant)
 
-![Dispatcher Interface](/public/screenshots/Dispatcher View.png)
+![Dispatcher Interface](/public/screenshots/Dispatcher-View.png)
 
 Once the AI has screened the call, **data is passed to the relevant primary agency** (JBPM, KKM, PDRM, APM, or MMEA). A **human dispatcher takes over, supported by a live AI assistant** that ensures no critical detail is missed.
 
@@ -139,6 +139,8 @@ Once the AI has screened the call, **data is passed to the relevant primary agen
 ---
 
 ### Phase 3: Resource Dispatch & Post-Incident Layer
+
+![Caller ETA View](/public/screenshots/Caller-View.png)
 
 Once the dispatcher confirms the emergency, **the physical response begins** with intelligent coordination and automated workflows.
 

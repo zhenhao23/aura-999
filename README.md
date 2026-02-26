@@ -140,11 +140,11 @@ Once the AI has screened the call, **data is passed to the relevant primary agen
 
 ### Phase 3: Resource Dispatch & Post-Incident Layer
 
-![Caller ETA View](/public/screenshots/Caller-View.png)
-
 Once the dispatcher confirms the emergency, **the physical response begins** with intelligent coordination and automated workflows.
 
 #### 🚨 Active Response Phase
+
+![Caller ETA View](/public/screenshots/Caller-View.png)
 
 **Caller Transparency & Peace of Mind**
 

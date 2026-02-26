@@ -446,48 +446,23 @@ This prevents hallucinations where undefined data caused the AI to invent random
 
 ## Future Improvements
 
-### 1. AI-Handled Non-Emergency Inquiries
+### 1. Autonomous Non-Emergency Resolution Layer
 
-For routine calls requiring no resource dispatch, AI can resolve inquiries independently without human dispatcher transfer, saving valuable dispatcher time:
+**Focus**: Filtering the "95% noise" to ensure life-critical cases get immediate human attention.
 
-**Information Requests with Location Intelligence:**
+**RAG-Driven Triage & Guidance**: When a caller reports a minor incident (e.g., a first-degree burn or a small cut), the AI immediately provides professional first-aid protocols. This calms the caller and confirms that a physical ambulance dispatch is unnecessary.
 
-- Caller asks: _"Where is the nearest clinic?"_
-  - AI performs real-time search using Google Places API
-  - Provides clinic name, address, operating hours, phone number
-  - Sends SMS with Google Maps link pinpoint for navigation
-  - No dispatcher involvement needed
+**AI Referral & Logistics**: Instead of simply ending the call, the AI adds value by identifying the nearest pharmacy or 24-hour clinic using the Google Places API.
 
-**Professional Safety Guidance via RAG:**
+**Closing the Loop via SMS**: The AI automatically sends an SMS with the facility's contact details and a Google Maps link. The caller gets the help they need, and the 999 line is freed up in seconds without a human dispatcher ever having to pick up the phone.
 
-- Caller reports: _"My cooking oil pan caught fire, what do I do?"_
-  - AI accesses emergency procedures knowledge base
-  - Provides step-by-step instructions: Turn off heat, cover pan with lid/wet towel, DO NOT use water
-  - Confirms situation is under control before ending call
-  - Escalates to Phase 2 if fire spreads beyond pan
+### 2. Predictive Resource Optimization
 
-**Automated Station Notification (No Human Dispatcher):**
+**Focus**: Shifting from reactive "wait-and-dispatch" to proactive "forward-deployment."
 
-- Caller reports: _"Minor collision at traffic light, no injuries, cars still drivable"_
-  - AI classifies as Priority 5 (non-urgent report)
-  - Automatically logs incident and notifies nearest police station via internal system
-  - Provides caller with report reference number for insurance claims
-  - Advises on safe vehicle removal procedures
-  - Dispatcher freed to handle genuine emergencies
+**Hotspot Forecasting**: The system identifies high-risk areas by cross-referencing historical data with real-time variables like traffic density, weather patterns (e.g., flash flood warnings), and major public events.
 
-**Impact**: Reduces dispatcher workload, allowing focus on High Priority cases.
-
-### 2. Smart Traffic Integration (STARS)
-
-- Deploy **STARS** (Smart Traffic Analytics & Recognition System) in pilot cities (Ipoh, etc.)
-- Implement **"Green wave" coordination** for emergency vehicles with priority traffic light sequencing
-- Real-time route optimization based on traffic conditions
-
-### 3. Post-Major Incident Public Alerting
-
-- **Civilian notifications**: Automated alerts to affected/nearby areas via SMS/app push
-- **Official information dissemination**: Auto-generate incident reports for government channels and social media
-- **Misinformation prevention**: Ensure public receives accurate information faster than third-party sources
+**Strategic Standby Positioning**: The AI suggests moving emergency vehicles to standby in these high-risk zones during peak periods. This "pre-positioning" places responders closer to the next likely emergency, slashing travel time during the critical "Golden Hour."
 
 ---
 

@@ -49,7 +49,7 @@ export function LiveIncidentSummary({
     language: "English",
     trustLevel: "High", // e.g., High, Medium, Low
   })
-  const [eventCode, setEventCode] = useState<string | null>("32-B-2");
+  const [eventCode, setEventCode] = useState<string | null>("32-D-2");
   const [showEventCodeDialog, setShowEventCodeDialog] = useState(false);
   const [tempEventCode, setTempEventCode] = useState({
     agency: "",
@@ -109,6 +109,17 @@ export function LiveIncidentSummary({
     return () => unsubscribe();
   }, [callId]);
 
+  // useEffect(() => {
+
+  //   const newEventCode = "32-E-2";
+  //   const timer = setInterval(() => {
+  //     setEventCode(newEventCode);
+  //     showNotification(`Event Code auto-updated to ${newEventCode}`, "success");
+  //   }, 60000);
+
+  //   return () => clearInterval(timer);
+  // }, []);
+
   // Listen for incident field updates
   useEffect(() => {
     if (!callId) {
@@ -155,7 +166,7 @@ export function LiveIncidentSummary({
   };
 
   const handleEventCodeClick = () => {
-    const [agencyCode, level, priority] = eventCode?.split("-") || ["32", "B", "2"];
+    const [agencyCode, level, priority] = eventCode?.split("-") || ["32", "D", "2"];
     setTempEventCode({
       agency: agencyCode,
       level,
@@ -168,6 +179,7 @@ export function LiveIncidentSummary({
     const newEventCode = `${tempEventCode.agency}-${tempEventCode.level}-${tempEventCode.priority}`;
     setEventCode(newEventCode);
     setShowEventCodeDialog(false);
+    showNotification(`Event Code changed to ${newEventCode}`, "success");
   };
 
   const startEditField = (fieldName: string, currentValue: string) => {
@@ -240,7 +252,7 @@ export function LiveIncidentSummary({
         return (
           <Badge className="bg-red-600 animate-pulse flex items-center gap-1 text-[11px] font-semibold">
             <AlertCircle className="w-3 h-3" />
-            Previous Prank Caller
+            Prank Caller
           </Badge>
         );
       default:
@@ -270,7 +282,7 @@ export function LiveIncidentSummary({
       {/* Notification Toast */}
       {notification.show && (
         <div
-          className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300 ${notification.type === "success"
+          className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-top-4 duration-300 ${notification.type === "success"
             ? "bg-green-600 text-white"
             : "bg-red-600 text-white"
             }`}
@@ -610,8 +622,11 @@ export function LiveIncidentSummary({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
-                    <SelectItem value="B">B - Building Level</SelectItem>
-                    <SelectItem value="D">D - District Level</SelectItem>
+                    <SelectItem value="E">E - Priority 1</SelectItem>
+                    <SelectItem value="D">D - Priority 2</SelectItem>
+                    <SelectItem value="C">C - Priority 3</SelectItem>
+                    <SelectItem value="B">B - Priority 4</SelectItem>
+                    <SelectItem value="A">A - Priority 5</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -628,11 +643,10 @@ export function LiveIncidentSummary({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-slate-800 border-slate-700">
-                    <SelectItem value="1">1 - Critical</SelectItem>
-                    <SelectItem value="2">2 - High</SelectItem>
-                    <SelectItem value="3">3 - Medium</SelectItem>
-                    <SelectItem value="4">4 - Low</SelectItem>
-                    <SelectItem value="5">5 - Minimal</SelectItem>
+                    <SelectItem value="1">1 - Not Alert</SelectItem>
+                    <SelectItem value="2">2 - Breathing Hardly</SelectItem>
+                    <SelectItem value="3">3 - Breathing Not Smooth</SelectItem>
+                    <SelectItem value="4">4 - Conscious</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

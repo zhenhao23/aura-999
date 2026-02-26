@@ -26,6 +26,18 @@ interface IncidentTableProps {
 const MOCK_INCIDENTS: Incident[] = [
   {
     id: "inc-001",
+    caseId: "MERS-2026-001233",
+    eventType: "Medical: Fainted",
+    language: "Malay",
+    phoneNumber: "+60123454422",
+    priority: "P1",
+    status: "active",
+    location: "Heriot-Watt University Malaysia Campus",
+    keywords: ["fainted", "breathing", "unconscious"],
+    receivedAt: new Date(Date.now() - 3.5 * 60000), // 5 mins ago
+  },
+  {
+    id: "inc-002",
     caseId: "MERS-2026-001234",
     eventType: "Medical: Cardiac",
     language: "Malay",
@@ -34,10 +46,10 @@ const MOCK_INCIDENTS: Incident[] = [
     status: "active",
     location: "Bukit Bintang",
     keywords: ["chest pain", "breathing", "sweating"],
-    receivedAt: new Date(Date.now() - 5 * 60000), // 5 mins ago
+    receivedAt: new Date(Date.now() - 5.5 * 60000), // 5 mins ago
   },
   {
-    id: "inc-002",
+    id: "inc-003",
     caseId: "MERS-2026-001235",
     eventType: "Fire: Building",
     language: "English",
@@ -49,7 +61,7 @@ const MOCK_INCIDENTS: Incident[] = [
     receivedAt: new Date(Date.now() - 12 * 60000), // 12 mins ago
   },
   {
-    id: "inc-003",
+    id: "inc-004",
     caseId: "MERS-2026-001236",
     eventType: "Crime: Robbery",
     language: "Mandarin",
@@ -61,7 +73,7 @@ const MOCK_INCIDENTS: Incident[] = [
     receivedAt: new Date(Date.now() - 18 * 60000), // 18 mins ago
   },
   {
-    id: "inc-004",
+    id: "inc-005",
     caseId: "MERS-2026-001237",
     eventType: "Medical: Accident",
     language: "Tamil",
@@ -73,7 +85,7 @@ const MOCK_INCIDENTS: Incident[] = [
     receivedAt: new Date(Date.now() - 25 * 60000), // 25 mins ago
   },
   {
-    id: "inc-005",
+    id: "inc-006",
     caseId: "MERS-2026-001238",
     eventType: "Medical: Fall",
     language: "Malay",

@@ -60,7 +60,7 @@ Our design is informed by:
 
 **Duration**: < 2 minutes | **AI Role**: Active Dispatcher
 
-![AI Screening](/public/screenshots/Incoming_Emergency-Call.png)
+![AI Screening](/public/screenshots/Incoming-Emergency-Call.png)
 
 Instead of waiting in a human queue, **999 callers are immediately met by an AI Dispatcher** (powered by Gemini 2.5 Flash) that conducts the initial triage.
 

@@ -40,9 +40,9 @@ export function IncomingCallAlert({
   const [callerDetails, setCallerDetails] = useState({
     phone: "+6016-1234567",
     language: "English",
-    trustLevel: "Low", // e.g., High, Medium, Low
+    trustLevel: "High", // e.g., High, Medium, Low
   })
-  const [eventCode, setEventCode] = useState<string | null>("32-B-2");
+  const [eventCode, setEventCode] = useState<string | null>("32-D-2");
   const getUrgencyColor = (level: number) => {
     if (level <= 1) return "bg-red-600";
     if (level <= 2) return "bg-orange-600";
@@ -51,10 +51,6 @@ export function IncomingCallAlert({
   };
 
   const getUrgencyLabel = (level: number) => {
-    // if (level <= 1) return "RESUSCITATION";
-    // if (level <= 2) return "EMERGENCY";
-    // if (level <= 3) return "URGENT";
-    // if (level <= 4) return "EARLY CARE";
     if (level <= 1) return "Priority 1";
     if (level <= 2) return "Priority 2";
     if (level <= 3) return "Priority 3";
@@ -95,7 +91,7 @@ export function IncomingCallAlert({
         return (
           <Badge className="bg-red-600 animate-pulse flex items-center gap-1 text-[11px] ">
             <AlertCircle className="w-3 h-3" />
-            Previous Prank Caller
+            Prank Caller
           </Badge>
         );
       default:

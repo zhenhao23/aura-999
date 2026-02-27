@@ -31,6 +31,167 @@ interface CallCardDetailProps {
 // Mock data - replace with actual data fetching
 const INCIDENT_DETAILS: Record<string, any> = {
   "inc-001": {
+    eventType: "Medical: Fainted",
+    language: "Malay",
+    phoneNumber: "+60123454422",
+    summary:
+      "Medical emergency at Heriot-Watt University Malaysia Campus. Caller reports a person has fainted and is having trouble breathing. The victim is unconscious and not responding. Immediate medical assistance required.",
+    keywords: [
+      "fainted",
+      "breathing",
+      "unconscious",
+    ],
+    caller: {
+      name: "Wei Shan",
+      phone: "+60123454422",
+      profile: "SaveME 999",
+      language: "Malay",
+    },
+    location: {
+      address: "Heriot-Watt University Malaysia Campus",
+      coords: { lat: 2.8994930048635545, lng: 101.6725950816638 },
+      accuracy: "36m (AML)",
+    },
+    assignedUnits: [
+      { type: "Ambulance", id: "KKM-A-001", eta: "15 min", status: "Dispatched" },
+      // {
+      //   type: "Police",
+      //   id: "PDRM-MPV-023",
+      //   eta: "9 min",
+      //   status: "En Route",
+      // },
+    ],
+    narrative: [
+      {
+        time: new Date(Date.now() - 7 * 60000), // 7 mins ago
+        type: "system",
+        content: "Call Received - AI Screening Initiated",
+      },
+      {
+        time: new Date(Date.now() - 6.5 * 60000), // 6.5 mins ago
+        type: "caller",
+        content: 'Caller: "Tolong! Tolong! Ada orang pengsan"',
+        translation: "Help! Help! Someone fainted!",
+      },
+      {
+        time: new Date(Date.now() - 6 * 60000), // 6 mins ago
+        type: "ai",
+        content:
+          "AI Assessment: High probability of fainting/syncope at university campus. Victim unconscious and having breathing difficulties. Immediate medical response required.",
+        confidence: "High",
+      },
+      {
+        time: new Date(Date.now() - 5.5 * 60000), // 5.5 mins ago
+        type: "dispatcher",
+        content:
+          "Dispatcher (Sarah): Confirmed - Unconscious student at Heriot-Watt Malaysia. Caller is panicking but providing details.",
+      },
+      {
+        time: new Date(Date.now() - 5 * 60000), // 5 mins ago
+        type: "caller",
+        content: 'Caller: "Kawan saya sudah pengsan"',
+        translation: "My friend has fainted!",
+      },
+      {
+        time: new Date(Date.now() - 4.5 * 60000), // 4.5 mins ago
+        type: "ai",
+        content:
+          "AI Insight: Speech pattern analysis shows extreme panic and distress. Recommend immediate ALS and campus security dispatch for scene safety.",
+        confidence: "High",
+      },
+      {
+        time: new Date(Date.now() - 4 * 60000), // 4 mins ago
+        type: "dispatcher",
+        content: "Ambulance KKM-A-001 dispatched to Heriot-Watt Malaysia Campus.",
+      },
+    ],
+    transcriptMessages: [
+      {
+        type: "dispatcher",
+        sender: "Dispatcher Sarah",
+        time: new Date(Date.now() - 7 * 60000), // 7 mins ago
+        originalText: "What is your emergency?",
+        translatedText: "Apa kecemasan anda?",
+        hasAudio: true,
+      },
+      {
+        type: "caller",
+        sender: "Wei Shan",
+        time: new Date(Date.now() - 6.5 * 60000), // 6.5 mins ago
+        originalText: "Kawan saya pengsan! Dia jatuh tiba-tiba!",
+        translatedText: "My friend fainted! She fell suddenly!",
+        hasAudio: true,
+      },
+      {
+        type: "dispatcher",
+        sender: "Dispatcher Sarah",
+        time: new Date(Date.now() - 6 * 60000), // 6 mins ago
+        originalText: "Stay calm. Where are you right now?",
+        translatedText: "Tenang. Di mana anda sekarang?",
+        hasAudio: true,
+      },
+      {
+        type: "caller",
+        sender: "Wei Shan",
+        time: new Date(Date.now() - 5.5 * 60000), // 5.5 mins ago
+        originalText: "We are at Heriot-Watt Malaysia! Main campus! Tolong!",
+        translatedText: "We are at Heriot-Watt Malaysia! Main campus! Help!",
+        hasAudio: true,
+      },
+      {
+        type: "dispatcher",
+        sender: "Dispatcher Sarah",
+        time: new Date(Date.now() - 5 * 60000), // 5 mins ago
+        originalText: "Is she breathing? Is she conscious?",
+        translatedText: "Adakah dia bernafas? Adakah dia sedar?",
+        hasAudio: true,
+      },
+      {
+        type: "caller",
+        sender: "Wei Shan",
+        time: new Date(Date.now() - 4.5 * 60000), // 4.5 mins ago
+        originalText: "She's not moving! Dia tidak sedar! Tolong bantu kami!",
+        translatedText: "She's not moving! She's not conscious! Please help us!",
+        hasAudio: true,
+      },
+      {
+        type: "dispatcher",
+        sender: "Dispatcher Sarah",
+        time: new Date(Date.now() - 4 * 60000), // 4 mins ago
+        originalText: "Ambulance is on the way - 15 minutes. Check if she's breathing. Can you turn her on her side?",
+        translatedText:
+          "Ambulans dalam perjalanan - 15 minit. Periksa sama ada dia bernafas. Boleh anda balikkan dia ke sisi?",
+        hasAudio: true,
+      },
+      {
+        type: "caller",
+        sender: "Wei Shan",
+        time: new Date(Date.now() - 3.5 * 60000), // 3.5 mins ago
+        originalText: "Yes! She is breathing! Please hurry!",
+        translatedText: "Ya! Dia bernafas! Cepat bodoh!",
+        hasAudio: true,
+      },
+    ],
+    videoAvailable: false,
+    // sentimentData: [
+    //   {
+    //     time: "00:00",
+    //     sentiment: "panic",
+    //     text: "Tolong! Saya perlukan ambulans!",
+    //   },
+    //   {
+    //     time: "00:13",
+    //     sentiment: "distress",
+    //     text: "Ya! Dia sedar tapi dia berpeluh banyak!",
+    //   },
+    //   {
+    //     time: "00:23",
+    //     sentiment: "worried",
+    //     text: "65 tahun. Dia ada sakit jantung dulu.",
+    //   },
+    // ],
+  },
+  "inc-002": {
     eventType: "Medical: Cardiac",
     language: "Malay",
     phoneNumber: "+60123456789",
@@ -163,7 +324,7 @@ const INCIDENT_DETAILS: Record<string, any> = {
       },
     ],
   },
-  "inc-002": {
+  "inc-003": {
     eventType: "Fire: Building",
     language: "English",
     phoneNumber: "+60198765432",
@@ -235,7 +396,7 @@ const INCIDENT_DETAILS: Record<string, any> = {
     videoAvailable: false,
     sentimentData: [],
   },
-  "inc-003": {
+  "inc-004": {
     eventType: "Crime: Robbery",
     language: "Mandarin",
     phoneNumber: "+60167891234",
@@ -293,7 +454,7 @@ const INCIDENT_DETAILS: Record<string, any> = {
     videoAvailable: false,
     sentimentData: [],
   },
-  "inc-004": {
+  "inc-005": {
     eventType: "Medical: Accident",
     language: "Tamil",
     phoneNumber: "+60145678901",
@@ -352,7 +513,7 @@ const INCIDENT_DETAILS: Record<string, any> = {
     videoAvailable: false,
     sentimentData: [],
   },
-  "inc-005": {
+  "inc-006": {
     eventType: "Medical: Fall",
     language: "Malay",
     phoneNumber: "+60132456789",
@@ -549,27 +710,25 @@ export function CallCardDetail({ incidentId }: CallCardDetailProps) {
               {incident.narrative.map((entry: any, idx: number) => (
                 <div
                   key={idx}
-                  className={`flex gap-3 p-3 rounded-lg ${
-                    entry.type === "ai"
-                      ? "bg-purple-500/10 border border-purple-500/30"
-                      : entry.type === "dispatcher"
-                        ? "bg-blue-500/10 border border-blue-500/30"
-                        : entry.type === "caller"
-                          ? "bg-green-500/10 border border-green-500/30"
-                          : "bg-muted"
-                  }`}
+                  className={`flex gap-3 p-3 rounded-lg ${entry.type === "ai"
+                    ? "bg-purple-500/10 border border-purple-500/30"
+                    : entry.type === "dispatcher"
+                      ? "bg-blue-500/10 border border-blue-500/30"
+                      : entry.type === "caller"
+                        ? "bg-green-500/10 border border-green-500/30"
+                        : "bg-muted"
+                    }`}
                 >
                   <div className="flex flex-col items-center gap-1">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        entry.type === "ai"
-                          ? "bg-purple-600"
-                          : entry.type === "dispatcher"
-                            ? "bg-blue-600"
-                            : entry.type === "caller"
-                              ? "bg-green-600"
-                              : "bg-gray-600"
-                      }`}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center ${entry.type === "ai"
+                        ? "bg-purple-600"
+                        : entry.type === "dispatcher"
+                          ? "bg-blue-600"
+                          : entry.type === "caller"
+                            ? "bg-green-600"
+                            : "bg-gray-600"
+                        }`}
                     >
                       {entry.type === "ai" && (
                         <Brain className="w-4 h-4 text-white" />
@@ -585,7 +744,7 @@ export function CallCardDetail({ incidentId }: CallCardDetailProps) {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground font-mono">
-                      {entry.time}
+                      {typeof entry.time === 'string' ? entry.time : entry.time?.toLocaleTimeString()}
                     </p>
                   </div>
                   <div className="flex-1 space-y-1">
@@ -598,13 +757,12 @@ export function CallCardDetail({ incidentId }: CallCardDetailProps) {
                     {entry.confidence && (
                       <Badge
                         variant="outline"
-                        className={`text-xs ${
-                          entry.confidence === "High"
-                            ? "border-green-500 text-green-600"
-                            : entry.confidence === "Medium"
-                              ? "border-yellow-500 text-yellow-600"
-                              : "border-red-500 text-red-600"
-                        }`}
+                        className={`text-xs ${entry.confidence === "High"
+                          ? "border-green-500 text-green-600"
+                          : entry.confidence === "Medium"
+                            ? "border-yellow-500 text-yellow-600"
+                            : "border-red-500 text-red-600"
+                          }`}
                       >
                         Confidence: {entry.confidence}
                       </Badge>
@@ -663,9 +821,8 @@ export function CallCardDetail({ incidentId }: CallCardDetailProps) {
                   {incident.transcriptMessages?.map((msg: any, idx: number) => (
                     <div
                       key={idx}
-                      className={`flex flex-col ${
-                        msg.type === "dispatcher" ? "items-end" : "items-start"
-                      }`}
+                      className={`flex flex-col ${msg.type === "dispatcher" ? "items-end" : "items-start"
+                        }`}
                     >
                       {/* Sender & Time */}
                       <div className="flex items-center gap-2 mb-1">
@@ -673,32 +830,29 @@ export function CallCardDetail({ incidentId }: CallCardDetailProps) {
                           {msg.sender}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {msg.time}
+                          {typeof msg.time === 'string' ? msg.time : msg.time?.toLocaleTimeString()}
                         </span>
                       </div>
 
                       {/* Original Message */}
                       <div
-                        className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                          msg.type === "dispatcher"
-                            ? "bg-muted text-foreground"
-                            : "bg-primary text-primary-foreground"
-                        }`}
+                        className={`max-w-[80%] rounded-lg px-3 py-2 ${msg.type === "dispatcher"
+                          ? "bg-muted text-foreground"
+                          : "bg-primary text-primary-foreground"
+                          }`}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
-                            msg.type === "dispatcher" ? "flex-row-reverse" : ""
-                          }`}
+                          className={`flex items-start gap-2 ${msg.type === "dispatcher" ? "flex-row-reverse" : ""
+                            }`}
                         >
                           {msg.hasAudio && (
                             <Volume2 className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           )}
                           <p
-                            className={`text-sm ${
-                              msg.type === "dispatcher"
-                                ? "italic"
-                                : "font-semibold"
-                            }`}
+                            className={`text-sm ${msg.type === "dispatcher"
+                              ? "italic"
+                              : "font-semibold"
+                              }`}
                           >
                             {msg.originalText}
                           </p>
@@ -707,16 +861,14 @@ export function CallCardDetail({ incidentId }: CallCardDetailProps) {
 
                       {/* Translated Message */}
                       <div
-                        className={`max-w-[80%] rounded-lg px-3 py-2 mt-1 ${
-                          msg.type === "dispatcher"
-                            ? "bg-muted/50 text-muted-foreground"
-                            : "bg-primary/50 text-primary-foreground/80"
-                        }`}
+                        className={`max-w-[80%] rounded-lg px-3 py-2 mt-1 ${msg.type === "dispatcher"
+                          ? "bg-muted/50 text-muted-foreground"
+                          : "bg-primary/50 text-primary-foreground/80"
+                          }`}
                       >
                         <div
-                          className={`flex items-start gap-2 ${
-                            msg.type === "dispatcher" ? "flex-row-reverse" : ""
-                          }`}
+                          className={`flex items-start gap-2 ${msg.type === "dispatcher" ? "flex-row-reverse" : ""
+                            }`}
                         >
                           <Languages className="w-3 h-3 mt-0.5 flex-shrink-0" />
                           <p className="text-xs italic">{msg.translatedText}</p>

@@ -31,10 +31,7 @@ import {
 } from "@/lib/firebase/signaling";
 import { AIAssessment, AIProgress, CallPhase } from "@/types/ai-agent";
 import { getEmergencyServices } from "@/lib/maps/emergency-resource";
-import {
-  doc,
-  onSnapshot
-} from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 
 export default function DashboardPage() {
@@ -65,7 +62,8 @@ export default function DashboardPage() {
   const [callPhase, setCallPhase] = useState<CallPhase>("ai-screening");
   const [showIncomingAlert, setShowIncomingAlert] = useState(false);
   const [closeAllTabs, setCloseAllTabs] = useState(false);
-  const [callerLanguage, setCallerLanguage] = useState<SupportedLanguage>("Malay");
+  const [callerLanguage, setCallerLanguage] =
+    useState<SupportedLanguage>("Malay");
   const [liveCallerText, setLiveCallerText] = useState("");
   const [liveSpeech, setLiveSpeech] = useState<string>("");
 
@@ -132,9 +130,9 @@ export default function DashboardPage() {
     let isActive = true;
     const center = callerLocation
       ? {
-        lat: callerLocation.coords.latitude,
-        lng: callerLocation.coords.longitude,
-      }
+          lat: callerLocation.coords.latitude,
+          lng: callerLocation.coords.longitude,
+        }
       : { lat: 2.8994930048635545, lng: 101.6725950816638 };
 
     getEmergencyServices(center.lat, center.lng)
@@ -317,12 +315,12 @@ export default function DashboardPage() {
               location={
                 callerLocation
                   ? {
-                    address: callerLocation.address,
-                    coords: {
-                      latitude: callerLocation.coords.latitude,
-                      longitude: callerLocation.coords.longitude,
-                    },
-                  }
+                      address: callerLocation.address,
+                      coords: {
+                        latitude: callerLocation.coords.latitude,
+                        longitude: callerLocation.coords.longitude,
+                      },
+                    }
                   : undefined
               }
               onAccept={handleAcceptCall}
@@ -385,13 +383,18 @@ export default function DashboardPage() {
             <>
               <div className="col-span-1 pointer-events-none"></div>
               <div className="col-span-2 overflow-auto pointer-events-auto">
-                <SuggestedQuestions onSendMessage={handleSendMessage} />
+                <SuggestedQuestions
+                  onSendMessage={handleSendMessage}
+                  activeCallId={activeCallId}
+                />
               </div>
               <div className="col-span-1 pointer-events-none"></div>
             </>
           )}
 
-          {!activeCallId && <div className="col-span-4 pointer-events-none"></div>}
+          {!activeCallId && (
+            <div className="col-span-4 pointer-events-none"></div>
+          )}
 
           <div className="col-span-2 overflow-auto pointer-events-auto">
             <UniversalComms

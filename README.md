@@ -2,14 +2,17 @@
 
 > Built for KitaHack 2026 Hackathon
 
-Malaysia’s emergency response system faces a serious prioritisation challenge. Each day, 999 operators receive up to 70,000 calls, yet only about 3,500 to 4,000 require emergency dispatch. Most incoming calls (~95%) are non-emergency in nature, including prank calls, accidental misdials, and individuals seeking conversation. These calls consume valuable operator time and delay responses to genuine life-threatening incidents.
+Malaysia’s emergency response system faces a serious prioritisation challenge. Each day, 999 operators receive up to 70,000 calls, yet only about 3,500 to 4,000 require emergency dispatch. This means roughly 95% of calls are non-emergencies, including prank calls, accidental misdials, hardware diagnostic calls, or individuals seeking conversation. Each of these calls consume critical operator time and delay responses to genuine life-threatening cases. 
 
-Compounding this issue is Malaysia’s linguistic diversity. While Malay and English are commonly supported, callers who speak in mixed languages, dialects, slang, or who are non-fluent often struggle to communicate clearly. This creates translation delays during high stress situations, requiring repetition and clarification that slow down information gathering and critical decision making.
+This issue is further worsened by Malaysia’s linguistic diversity. While Malay and English are commonly supported, callers who use mixed languages, slang, or who are non-fluent often struggle to communicate effectively. Dispatchers must repeatedly clarify details, sometimes transferring calls between language-specific operators. These delays are particularly dangerous during medical emergencies where minutes are critical. 
 
-Most critically, dispatchers work under intense cognitive pressure. They must filter large volumes of low-value calls, calm distressed callers, extract essential information, manually complete incident forms, identify and coordinate appropriate resources, and liaise across multiple agencies — all in real time. This multitasking environment increases the risk of inconsistent triage, human error, and delayed response.
-The consequences are evident. According to the national audit report, the Ministry of Health Malaysia reported that only 41.8 per cent of emergency calls were attended by an ambulance within the targeted 15-minute timeframe between 2017 and 2021. These highlight systemic inefficiencies in handling the most critical emergencies.
+Dispatchers also operate under intense cognitive pressure. They must filter large volumes of low-value calls, calm distressed callers, extract critical information, complete incident forms manually, identify and coordinate appropriate resources, and liaise across multiple agencies—all in real time. This multitasking increases the risk of inconsistent triage, human error, and delayed response. 
+
+The consequences are evident. According to the national audit report, between 2017 and 2021, only 41.8% of emergency calls were attended by an ambulance within the targeted 15-minute timeframe. Public reports also cite instances where delayed emergency responses contributed to preventable deaths, highlighting systemic inefficiencies in managing critical emergencies. 
 
 **AURA 999 (AI Unified Response Assistant)** addresses these challenges through an intelligent AI-powered emergency dispatch system that transforms how Malaysia handles 999 calls. By automating initial call screening, providing real-time multilingual translation, deploying machine learning models for resource prediction and incident classification, and auto-generating comprehensive incident reports, AURA 999 reduces dispatcher cognitive load, accelerates response times, and ensures critical cases receive immediate attention. This project directly supports **UN Sustainable Development Goal 3 (Good Health and Well-being)** by improving emergency medical response efficiency and **SDG 11 (Sustainable Cities and Communities)** by strengthening urban resilience and emergency management infrastructure for safer, more responsive communities.
+
+
 
 ---
 

@@ -2,17 +2,15 @@
 
 > Built for KitaHack 2026 Hackathon
 
-Malaysia’s emergency response system faces a serious prioritisation challenge. Each day, 999 operators receive up to 70,000 calls, yet only about 3,500 to 4,000 require emergency dispatch. This means roughly 95% of calls are non-emergencies, including prank calls, accidental misdials, hardware diagnostic calls, or individuals seeking conversation. Each of these calls consume critical operator time and delay responses to genuine life-threatening cases. 
+Malaysia’s emergency response system faces a serious prioritisation challenge. Each day, 999 operators receive up to 70,000 calls, yet only about 3,500 to 4,000 require emergency dispatch [[1]](#references--research). This means roughly 95% of calls are non-emergencies, including prank calls, accidental misdials, hardware diagnostic calls, or individuals seeking conversation. Each of these calls consume critical operator time and delay responses to genuine life-threatening cases.
 
-This issue is further worsened by Malaysia’s linguistic diversity. While Malay and English are commonly supported, callers who use mixed languages, slang, or who are non-fluent often struggle to communicate effectively. Dispatchers must repeatedly clarify details, sometimes transferring calls between language-specific operators. These delays are particularly dangerous during medical emergencies where minutes are critical. 
+This issue is further worsened by Malaysia’s linguistic diversity. While Malay and English are commonly supported, callers who use mixed languages, slang, or who are non-fluent often struggle to communicate effectively. Dispatchers must repeatedly clarify details, sometimes transferring calls between language-specific operators. These delays are particularly dangerous during medical emergencies where minutes are critical.
 
-Dispatchers also operate under intense cognitive pressure. They must filter large volumes of low-value calls, calm distressed callers, extract critical information, complete incident forms manually, identify and coordinate appropriate resources, and liaise across multiple agencies—all in real time. This multitasking increases the risk of inconsistent triage, human error, and delayed response. 
+Dispatchers also operate under intense cognitive pressure. They must filter large volumes of low-value calls, calm distressed callers, extract critical information, complete incident forms manually, identify and coordinate appropriate resources, and liaise across multiple agencies—all in real time. This multitasking increases the risk of inconsistent triage, human error, and delayed response.
 
-The consequences are evident. According to the national audit report, between 2017 and 2021, only 41.8% of emergency calls were attended by an ambulance within the targeted 15-minute timeframe. Public reports also cite instances where delayed emergency responses contributed to preventable deaths, highlighting systemic inefficiencies in managing critical emergencies. 
+The consequences are evident. According to the national audit report, between 2017 and 2021, only 41.8% of emergency calls were attended by an ambulance within the targeted 15-minute timeframe [[8]](#references--research). Public reports also cite instances where delayed emergency responses contributed to preventable deaths, highlighting systemic inefficiencies in managing critical emergencies.
 
 **AURA 999 (AI Unified Response Assistant)** addresses these challenges through an intelligent AI-powered emergency dispatch system that transforms how Malaysia handles 999 calls. By automating initial call screening, providing real-time multilingual translation, deploying machine learning models for resource prediction and incident classification, and auto-generating comprehensive incident reports, AURA 999 reduces dispatcher cognitive load, accelerates response times, and ensures critical cases receive immediate attention. This project directly supports **UN Sustainable Development Goal 3 (Good Health and Well-being)** by improving emergency medical response efficiency and **SDG 11 (Sustainable Cities and Communities)** by strengthening urban resilience and emergency management infrastructure for safer, more responsive communities.
-
-
 
 ---
 
@@ -24,7 +22,7 @@ AURA 999 is **designed for seamless integration** with Malaysia's existing Next 
 
 Our design is informed by:
 
-- **Publicly available documentation** on NG MERS 999 operational procedures
+- **Publicly available documentation** on NG MERS 999 operational procedures [[5-6]](#references--research)
 - **Direct consultations** with NG MERS 999 specialists
 
 ### Key Compatibility Features
@@ -266,7 +264,7 @@ The MPDS Event Code Classifier is a machine learning tool designed to automate t
 
 #### 1.1 Understanding MPDS Event Codes
 
-The Medical Priority Dispatch System (MPDS) is a unified system used by emergency dispatch centers to prioritize 999 calls. It translates a caller’s description of an emergency into a Determinant Code (e.g., 10-D-1).
+The Medical Priority Dispatch System (MPDS) is a unified system used by emergency dispatch centers to prioritize 999 calls [[13]](#references--research). It translates a caller's description of an emergency into a Determinant Code (e.g., 10-D-1).
 
 - **Protocol (e.g., 10)**: The general category (e.g., Chest Pain).
 - **Level (e.g., D)**: Severity, ranging from A (Alpha/Low) to E (Echo/Critical).
@@ -317,7 +315,7 @@ This model uses a `Functional API` approach in `TensorFlow` to process two disti
 
 ![Multi Model Architecture](/public/screenshots/multi_model.png)
 
-The model utilizes a **Late Fusion** strategy, where features are processed in separate "branches" before being merged for the final decision.
+The model utilizes a **Late Fusion** strategy [[17]](#references--research), where features are processed in separate "branches" before being merged for the final decision.
 
 The architecture consists of:
 
@@ -344,7 +342,7 @@ The architecture consists of:
 
 ### 3. Real-Time Voice AI Infrastructure
 
-The AI Dispatcher uses Gemini 2.5 Flash's multimodal Live API to conduct natural emergency conversations with sub-second latency. This required solving several production-critical challenges in real-time audio streaming, WebSocket state management, and prompt engineering.
+The AI Dispatcher uses Gemini 2.5 Flash's multimodal Live API [[18]](#references--research) to conduct natural emergency conversations with sub-second latency. This required solving several production-critical challenges in real-time audio streaming, WebSocket state management, and prompt engineering.
 
 #### 3.1 Production Challenges
 
@@ -540,3 +538,9 @@ npm run dev
 ```
 
 The app will be available at **[http://localhost:3000](http://localhost:3000)**
+
+---
+
+## References & Research
+
+For a comprehensive list of research materials, technical documentation, and industry studies that informed the development of AURA 999, please see [REFERENCES.md](REFERENCES.md).
